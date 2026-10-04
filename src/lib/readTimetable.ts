@@ -112,7 +112,7 @@ function open(mask: Uint8Array, W: number, H: number, r: number) {
  * Classes that touch each other end up in one component. Split it by fill color: every color
  * that covers a real share of the component becomes its own block(s). Text pixels match no fill.
  */
-function splitByColor(pixels: number[], px: Uint8ClampedArray, W: number, H: number): Block[] {
+function splitByColor(pixels: number[], px: Uint8ClampedArray, W: number, H: number, bgColor: RGB): Block[] {
   const hist = new Map<number, [number, number, number, number]>()
   for (const p of pixels) {
     const i = p * 4
@@ -177,8 +177,22 @@ function splitByColor(pixels: number[], px: Uint8ClampedArray, W: number, H: num
     }
     const bw = x1 - x0 + 1
     const bh = y1 - y0 + 1
-    if (bw > W * 0.025 && bh > H * 0.02 && area > W * H * 0.0008 && area / (bw * bh) > 0.4)
-      out.push({ x0, y0, x1: x1 + 1, y1: y1 + 1, color: fills[k] })
+    if (!(bw > W * 0.025 && bh > H * 0.02 && area > W * H * 0.0008 && area / (bw * bh) > 0.4)) continue
+    // points near the corners must still be inside the block (rules out round buttons)
+    const ix = Math.max(3, bw * 0.08)
+    const iy = Math.max(3, bh * 0.08)
+    const bgLike = [
+      [x0 + ix, y0 + iy],
+      [x1 - ix, y0 + iy],
+      [x0 + ix, y1 - iy],
+      [x1 - ix, y1 - iy],
+    ].filter(([x, y]) => {
+      const i = (Math.round(y) * W + Math.round(x)) * 4
+      const c: RGB = [px[i], px[i + 1], px[i + 2]]
+      return dist(c, bgColor) + 10 < dist(c, fills[k])
+    }).length
+    if (bgLike >= 2) continue
+    out.push({ x0, y0, x1: x1 + 1, y1: y1 + 1, color: fills[k] })
   }
   return out
 }
@@ -221,9 +235,9 @@ function findBlocks(px: Uint8ClampedArray, W: number, H: number, bg: RGB): { blo
     const bw = x1 - x0 + 1
     const bh = y1 - y0 + 1
     const sized = bw > W * 0.025 && bh > H * 0.02 && pixels.length > W * H * 0.0012
-    const notChrome = bw < W * 0.6 && bh < H * 0.9 // header bars, page panels
+    const notChrome = bw < W * 0.98 && bh < H * 0.9 // whole-screen panels (edge bars go later: left of the time axis)
     if (!sized || !notChrome) continue
-    blocks.push(...splitByColor(pixels, px, W, H))
+    blocks.push(...splitByColor(pixels, px, W, H, bg))
   }
   return { blocks, mask }
 }
@@ -580,37 +594,87 @@ export async function readTimetable(dataUrl: string, onProgress?: (fraction: num
     return edges.slice(1).map((y1, i) => ({ ...b, y0: edges[i], y1 }))
   })
 
-  // day columns: day names (Mon, Tue… in several languages) are evenly spaced, one per column
+  // day columns: day names (Mon, Tue… in several languages, or single letters M T W…) are
+  // evenly spaced, one per column. A view can start on any day (Sunday-first weeks, 3-day views).
   const gridBottom = Math.max(...blocks.map((b) => b.y1))
-  const headers = words
-    .filter((w) => w.y1 <= gridTop + 4 && w.y0 >= gridTop - H * 0.3)
-    .map((w) => ({ x: cx(w), day: dayOf(w.text) }))
-    .filter((h) => h.day >= 0)
-    .sort((a, b) => a.x - b.x)
-  const days: { x: number; day: number }[] = []
-  for (const h of headers) if (!days.some((d) => d.day === h.day) && (!days.length || h.day > days.at(-1)!.day)) days.push(h)
+  const gridRight = Math.max(...blocks.map((b) => b.x1))
+  const band = words.filter((w) => w.y1 <= gridTop + 4 && w.y0 >= gridTop - H * 0.3)
+  Object.assign(lastRead, { band: band.map((w) => `${w.text}@${Math.round(cx(w))},${Math.round(cy(w))}`).join(' ') })
+  let heads = band.map((w) => ({ x: cx(w), day: dayOf(w.text) })).filter((h) => h.day >= 0)
+  if (heads.length < 2) {
+    // single letters: line them up by position (a missed letter leaves a gap), then find the weekday
+    // pattern and starting point that match best
+    const letters = band.filter((w) => /^\p{L}$/u.test(w.text.trim())).sort((a, b) => cx(a) - cx(b))
+    if (letters.length >= 3) {
+      const gaps = letters.slice(1).map((w, i) => cx(w) - cx(letters[i]))
+      const med = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)]
+      const units = gaps.map((g) => g / Math.max(1, Math.round(g / med))).sort((a, b) => a - b)
+      const unit = units[Math.floor(units.length / 2)]
+      const ks = letters.map((w) => Math.round((cx(w) - cx(letters[0])) / unit))
+      const aligned = letters.every((w, i) => Math.abs(cx(w) - cx(letters[0]) - ks[i] * unit) < unit * 0.25) && new Set(ks).size === ks.length
+      if (aligned && ks.at(-1)! < 7) {
+        const chars = letters.map((w) => simplify(w.text)[0])
+        // pattern letters → day (0 = Monday); Sunday-first patterns are rotated
+        const patterns: { letters: string; sundayFirst: boolean }[] = [
+          { letters: 'mtwtfss', sundayFirst: false }, // English
+          { letters: 'lmmgvsd', sundayFirst: false }, // Italian
+          { letters: 'pscpccp', sundayFirst: false }, // Turkish
+          { letters: 'lmmjvsd', sundayFirst: false }, // French / Spanish
+          { letters: 'mdmdfss', sundayFirst: false }, // German
+          { letters: 'smtwtfs', sundayFirst: true }, // English, Sunday first
+        ]
+        let best = { score: 0, pattern: patterns[0], offset: 0 }
+        for (const pattern of patterns)
+          for (let offset = 0; offset < 7; offset++) {
+            const score = chars.filter((c, i) => pattern.letters[(offset + ks[i]) % 7] === c).length
+            if (score > best.score) best = { score, pattern, offset }
+          }
+        if (best.score >= Math.ceil(letters.length * 0.7))
+          heads = letters.map((w, i) => {
+            const idx = (best.offset + ks[i]) % 7
+            return { x: cx(w), day: best.pattern.sundayFirst ? (idx + 6) % 7 : idx }
+          })
+      }
+    }
+  }
+  heads.sort((a, b) => a.x - b.x)
+  heads = heads.filter((h, i) => i === 0 || h.x - heads[i - 1].x > W * 0.02) // one per column
 
+  const widest = Math.max(...blocks.map((b) => b.x1 - b.x0))
+  const singleDay = widest > (gridRight - gridLeft) * 0.5
   let dayAt: (x: number) => number
-  if (days.length >= 2) {
-    const steps: number[] = []
-    for (let i = 1; i < days.length; i++) steps.push((days[i].x - days[i - 1].x) / (days[i].day - days[i - 1].day))
-    const spacing = steps.sort((a, b) => a - b)[Math.floor(steps.length / 2)]
+  if (singleDay) {
+    // a day view: everything happens on the day named above it (Monday if unreadable)
+    const day = heads[0]?.day ?? 0
+    if (!heads.length) notes.push('days_guessed')
+    dayAt = () => day
+  } else if (heads.length >= 2) {
+    const steps = heads.slice(1).map((h, i) => h.x - heads[i].x)
+    // one column wide: typical step between neighbouring names (a missing name makes a double step)
+    const med = [...steps].sort((a, b) => a - b)[Math.floor(steps.length / 2)]
+    const perColumn = steps.map((st) => st / Math.max(1, Math.round(st / med))).sort((a, b) => a - b)
+    const spacing = perColumn[Math.floor(perColumn.length / 2)]
+    const at = heads.map((h) => ({ ...h, k: Math.round((h.x - heads[0].x) / spacing) }))
+    const dayOfColumn = (k: number) => {
+      const near = at.reduce((a, b) => (Math.abs(b.k - k) < Math.abs(a.k - k) ? b : a))
+      return (((near.day + (k - near.k)) % 7) + 7) % 7
+    }
     // where does a column start relative to its day name? most classes start at a column's left edge
     const bins = new Map<number, number>()
     for (const b of blocks) {
-      const rel = Math.round((((b.x0 - days[0].x) % spacing) + spacing) % spacing / 4)
+      const rel = Math.round(((((b.x0 - heads[0].x) % spacing) + spacing) % spacing) / 4)
       bins.set(rel, (bins.get(rel) ?? 0) + 1)
     }
     const rel = [...bins.entries()].sort((a, b) => b[1] - a[1])[0][0] * 4
-    const start0 = days[0].x - ((spacing - rel) % spacing) // the column's left edge is never right of its name
-    dayAt = (x) => Math.max(0, Math.min(6, days[0].day + Math.floor((x - start0 + 2) / spacing)))
-    Object.assign(lastRead, { spacing, rel, start0, days })
+    const start0 = heads[0].x - ((spacing - rel) % spacing) // a column's left edge is never right of its name
+    dayAt = (x) => dayOfColumn(Math.floor((x - start0 + 2) / spacing))
+    Object.assign(lastRead, { spacing, rel, start0, days: at })
   } else {
     // no readable day names: use the vertical lines between days, Monday onwards
     const seps = columnLines(px, mask, W, gridTop, gridBottom).filter((x) => x >= gridLeft - W * 0.02)
     const bounds = [...seps]
     if (!bounds.length || bounds[0] > gridLeft + 2) bounds.unshift(gridLeft - 1)
-    if (bounds.at(-1)! < Math.max(...blocks.map((b) => b.x1)) - 2) bounds.push(W)
+    if (bounds.at(-1)! < gridRight - 2) bounds.push(W)
     const widths = bounds.slice(1).map((x, i) => x - bounds[i])
     const typical = [...widths].sort((a, b) => a - b)[Math.floor(widths.length / 2)] ?? W
     const cols = bounds.slice(1).map((r, i) => ({ l: bounds[i], r })).filter((c) => c.r - c.l > typical * 0.5)

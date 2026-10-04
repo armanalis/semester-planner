@@ -400,6 +400,7 @@ function TimetableStep({
         </button>
       )}
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={(e) => take(e.target.files?.[0])} />
+      <p className="text-xs text-ink-soft">{t('uploadTip')}</p>
 
       {error && (
         <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">
