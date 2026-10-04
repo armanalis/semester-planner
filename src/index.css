@@ -1,0 +1,268 @@
+@import '@fontsource-variable/instrument-sans';
+@import 'tailwindcss';
+
+/* Every token is light-dark(paper, night notebook). The theme switch only sets color-scheme. */
+@theme {
+  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* paper + ink */
+  --color-paper: light-dark(#fbfcfe, #121826);
+  --color-sheet: light-dark(#ffffff, #161d2e);
+  --color-rule: light-dark(#dfe6f2, #222b41);
+  --color-rule-strong: light-dark(#c9d5ea, #2f3a55);
+  --color-ink: light-dark(#1b2540, #e4e8f4);
+  --color-ink-soft: light-dark(#4a5672, #a3adc6);
+  --color-ink-faint: light-dark(#8792ab, #6c7792);
+  --color-pen: light-dark(#2440c4, #93a6ff);
+  --color-pen-hover: light-dark(#1b33a6, #b4c1ff);
+  --color-pen-soft: light-dark(#e8ecfc, #222b4b);
+  --color-on-pen: light-dark(#ffffff, #0f1530);
+  --color-margin: light-dark(#e0484e, #ff6f75);
+  --color-danger: light-dark(#b42323, #ff8f8f);
+  --color-danger-soft: light-dark(#fdecec, #3a1f27);
+  --color-mark: light-dark(#fceb8f, #4a4217);
+  --color-mark-ink: light-dark(#7a6408, #f2de72);
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-feature-settings: 'tnum' 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--color-mark);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-pen);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  button {
+    cursor: pointer;
+  }
+  dialog:focus-visible {
+    outline: none;
+  }
+  dialog::backdrop {
+    background: light-dark(rgb(27 37 64 / 0.28), rgb(4 7 15 / 0.6));
+  }
+}
+
+@layer components {
+  /* graph paper: half-hour squares, stronger line every hour */
+  .quadretti {
+    background-color: var(--color-sheet);
+    background-image:
+      linear-gradient(to bottom, var(--color-rule-strong) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-rule) 1px, transparent 1px),
+      linear-gradient(to right, var(--color-rule) 1px, transparent 1px);
+    background-size:
+      100% var(--hour),
+      28px calc(var(--hour) / 2),
+      28px calc(var(--hour) / 2);
+  }
+
+  /* a lecture drawn with a highlighter: uneven marker edges */
+  .highlighter {
+    background: var(--hl);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent);
+    border-radius: 3px 9px 4px 10px / 8px 3px 9px 4px;
+  }
+
+  /* a study block drawn in pen; fills with highlighter when done */
+  .pen-block {
+    --done-fill: color-mix(in srgb, var(--hl) 70%, var(--color-sheet));
+    background-color: color-mix(in srgb, var(--color-sheet) 86%, transparent);
+    background-image: linear-gradient(var(--done-fill), var(--done-fill));
+    background-repeat: no-repeat;
+    background-size: 0% 100%;
+    border: 1.5px dashed var(--ink);
+    border-radius: 6px;
+    transition: background-size 420ms cubic-bezier(0.3, 0.7, 0.2, 1);
+  }
+  .pen-block[data-done='true'] {
+    background-size: 100% 100%;
+    border-style: solid;
+  }
+
+  .skipped {
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-ink-faint) 14%, transparent) 0 4px,
+      transparent 4px 9px
+    );
+    border: 1px dashed var(--color-rule-strong);
+    border-radius: 6px;
+  }
+
+  /* highlighter stroke behind a headline, wraps line by line */
+  .marker {
+    background-image: linear-gradient(
+      transparent 0.2em,
+      var(--hl) 0.2em,
+      var(--hl) 0.95em,
+      transparent 0.95em
+    );
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    padding: 0 0.18em;
+    margin: 0 -0.18em;
+    border-radius: 0.2em 0.5em 0.3em 0.6em;
+  }
+
+  /* rendered notes */
+  .md {
+    font-size: 15px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+  .md > * + * {
+    margin-top: 0.7em;
+  }
+  .md h1,
+  .md h2,
+  .md h3 {
+    font-weight: 700;
+    line-height: 1.25;
+    margin-top: 1.2em;
+  }
+  .md h1 {
+    font-size: 1.4em;
+  }
+  .md h2 {
+    font-size: 1.2em;
+  }
+  .md h3 {
+    font-size: 1.05em;
+  }
+  .md ul {
+    list-style: disc;
+    padding-left: 1.3em;
+  }
+  .md ol {
+    list-style: decimal;
+    padding-left: 1.3em;
+  }
+  .md li + li {
+    margin-top: 0.2em;
+  }
+  .md li.task-list-item {
+    list-style: none;
+    margin-left: -1.3em;
+  }
+  .md input[type='checkbox'] {
+    margin-right: 0.45em;
+    accent-color: var(--ink, var(--color-pen));
+  }
+  .md a {
+    color: var(--color-pen);
+    text-decoration: underline;
+  }
+  .md strong {
+    font-weight: 700;
+  }
+  .md code {
+    font-size: 0.9em;
+    background: var(--color-pen-soft);
+    border-radius: 4px;
+    padding: 0.1em 0.3em;
+  }
+  .md pre {
+    background: var(--color-paper);
+    border: 1px solid var(--color-rule);
+    border-radius: 8px;
+    padding: 0.7em 0.9em;
+    overflow-x: auto;
+  }
+  .md pre code {
+    background: none;
+    padding: 0;
+  }
+  .md blockquote {
+    border-left: 3px solid var(--hl, var(--color-mark));
+    padding-left: 0.8em;
+    color: var(--color-ink-soft);
+  }
+  .md table {
+    border-collapse: collapse;
+    font-size: 0.92em;
+  }
+  .md th,
+  .md td {
+    border: 1px solid var(--color-rule-strong);
+    padding: 0.3em 0.6em;
+    text-align: left;
+  }
+  .md .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.2em 0;
+  }
+
+  .field {
+    width: 100%;
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-sheet);
+    border-radius: 8px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.875rem;
+    color: var(--color-ink);
+  }
+  .field::placeholder {
+    color: var(--color-ink-faint);
+  }
+  .field:focus-visible {
+    outline: 2px solid var(--color-pen);
+    outline-offset: 0;
+    border-color: transparent;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: 8px;
+    padding: 0.42rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: background-color 120ms;
+  }
+  .btn-primary {
+    background: var(--color-pen);
+    color: var(--color-on-pen);
+  }
+  .btn-primary:hover {
+    background: var(--color-pen-hover);
+  }
+  .btn-quiet {
+    color: var(--color-ink-soft);
+  }
+  .btn-quiet:hover {
+    background: var(--color-pen-soft);
+    color: var(--color-ink);
+  }
+  .btn-danger {
+    color: var(--color-danger);
+  }
+  .btn-danger:hover {
+    background: var(--color-danger-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}

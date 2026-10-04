@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fbfcfe" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121826" media="(prefers-color-scheme: dark)" />
+    <title>Semester planner</title>
+    <script>
+      // apply saved theme + language before first paint, so there's no flash
+      try {
+        const prefs = JSON.parse(localStorage.getItem('polito-planner') || '{}').state?.prefs || {}
+        const scheme = { light: 'light', dark: 'dark' }[prefs.theme] || 'light dark'
+        document.documentElement.style.colorScheme = scheme
+        if (prefs.lang) document.documentElement.lang = prefs.lang
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
