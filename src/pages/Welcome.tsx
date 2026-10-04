@@ -45,10 +45,10 @@ const shortFrom = (name: string) =>
     .toUpperCase()
     .slice(0, 5) || name.slice(0, 4).toUpperCase()
 
-/** Shrink big screenshots so the upload stays small; text stays readable at 2000px. */
+/** Keep screenshots sharp (PNG): thin gaps between classes matter. Only very large images shrink. */
 async function toDataUrl(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height))
+  const scale = Math.min(1, 2600 / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bitmap.width * scale)
   canvas.height = Math.round(bitmap.height * scale)
@@ -56,11 +56,24 @@ async function toDataUrl(file: File): Promise<string> {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  return canvas.toDataURL('image/jpeg', 0.92)
+  return canvas.toDataURL('image/png')
+}
+
+/** The highlighter color closest to a course's color in the screenshot. */
+function nearestHue([r, g, b]: [number, number, number]): HueKey {
+  const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+  let best: HueKey = 'slate'
+  let bestD = Infinity
+  for (const h of Object.keys(HUES) as HueKey[]) {
+    const [hr, hg, hb] = hex(HUES[h].hl[0])
+    const d = (hr - r) ** 2 + (hg - g) ** 2 + (hb - b) ** 2
+    if (d < bestD) [best, bestD] = [h, d]
+  }
+  return best
 }
 
 interface ParsedTimetable {
-  courses: { name: string; short: string }[]
+  courses: { name: string; short: string; color?: [number, number, number] }[]
   slots: { course: string; day: number; start: string; end: string; kind: SlotKind }[]
   note: string
 }
@@ -77,6 +90,7 @@ export default function Welcome() {
   const [profile, setProfile] = useState<Profile>({ name: '', university: '', program: '', semesterStart: '' })
   const [image, setImage] = useState('')
   const [parsing, setParsing] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [parseError, setParseError] = useState('')
   const [note, setNote] = useState('')
   const [courses, setCourses] = useState<DraftCourse[]>([])
@@ -101,26 +115,16 @@ export default function Welcome() {
   const read = async () => {
     setParsing(true)
     setParseError('')
+    setProgress(0)
     try {
-      const res = await fetch('/api/parse-timetable', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image, program: profile.program }),
-      })
-      const body = (await res.json().catch(() => ({}))) as Partial<ParsedTimetable> & { error?: string }
-      if (!res.ok) {
-        setParseError(
-          body.error === 'missing_key' || body.error === 'no_credits'
-            ? t('parseUnavailable')
-            : t('parseFailed', { error: body.error ?? res.status }),
-        )
-        return
-      }
+      // read in the browser: free, private, no server involved
+      const { readTimetable } = await import('../lib/readTimetable')
+      const body: Partial<ParsedTimetable> = await readTimetable(image, setProgress)
       const draftCourses: DraftCourse[] = (body.courses ?? []).map((c, i) => ({
         id: uid(),
         name: c.name.trim(),
         short: (c.short || shortFrom(c.name)).trim().slice(0, 8),
-        hue: HUE_ORDER[i % HUE_ORDER.length],
+        hue: c.color ? nearestHue(c.color) : HUE_ORDER[i % HUE_ORDER.length],
       }))
       const byName = (name: string) => draftCourses.find((c) => c.name.toLowerCase() === name.trim().toLowerCase())
       const draftSlots: DraftSlot[] = []
@@ -141,10 +145,13 @@ export default function Welcome() {
       }
       setCourses(draftCourses)
       setSlots(draftSlots)
-      setNote(body.note ?? '')
+      setNote(body.note?.includes('days_guessed') ? t('daysGuessed') : '')
       setStep(3)
     } catch (e) {
-      setParseError(t('parseFailed', { error: (e as Error).message }))
+      const code = (e as Error).message
+      setParseError(
+        code === 'no_time_axis' ? t('parseNoTimes') : code === 'no_blocks' ? t('parseEmpty') : t('parseFailed', { error: code }),
+      )
     } finally {
       setParsing(false)
     }
@@ -214,6 +221,7 @@ export default function Welcome() {
                     setParseError('')
                   }}
                   parsing={parsing}
+                  progress={progress}
                   error={parseError}
                   onRead={read}
                   onTemplate={useTemplate}
@@ -298,6 +306,7 @@ function TimetableStep({
   image,
   setImage,
   parsing,
+  progress,
   error,
   onRead,
   onTemplate,
@@ -307,6 +316,7 @@ function TimetableStep({
   image: string
   setImage: (img: string) => void
   parsing: boolean
+  progress: number
   error: string
   onRead: () => void
   onTemplate: () => void
@@ -348,7 +358,14 @@ function TimetableStep({
               <RefreshCw size={15} /> {t('changeImage')}
             </button>
           </div>
-          {parsing && <p className="mt-2 text-sm text-ink-soft" role="status">{t('reading')}</p>}
+          {parsing && (
+            <div className="mt-3" role="status">
+              <p className="text-sm text-ink-soft">{t('reading', { pct: Math.round(progress * 100) })}</p>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-rule">
+                <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${Math.round(progress * 100)}%` }} />
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <button

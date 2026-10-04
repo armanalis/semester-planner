@@ -162,6 +162,7 @@ export function startSync() {
   window.addEventListener('focus', () => pull())
   window.addEventListener('online', () => syncNow())
   document.addEventListener('visibilitychange', onVisible)
-  setInterval(() => document.visibilityState === 'visible' && pull(), 15_000)
+  // every 30s while visible (and right away when you come back): stays well inside Upstash's free quota
+  setInterval(() => document.visibilityState === 'visible' && pull(), 30_000)
   if (useSync.getState().code) syncNow()
 }
