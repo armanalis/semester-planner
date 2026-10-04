@@ -108,28 +108,55 @@ function open(mask: Uint8Array, W: number, H: number, r: number) {
   return out
 }
 
-function findBlocks(px: Uint8ClampedArray, W: number, H: number, bg: RGB): { blocks: Block[]; mask: Uint8Array } {
-  const fill = new Uint8Array(W * H)
-  for (let i = 0, p = 0; p < W * H; p++, i += 4)
-    if (Math.max(Math.abs(px[i] - bg[0]), Math.abs(px[i + 1] - bg[1]), Math.abs(px[i + 2] - bg[2])) >= 12) fill[p] = 1
-  const mask = open(fill, W, H, Math.max(1, Math.round(W / 700)))
+/**
+ * Classes that touch each other end up in one component. Split it by fill color: every color
+ * that covers a real share of the component becomes its own block(s). Text pixels match no fill.
+ */
+function splitByColor(pixels: number[], px: Uint8ClampedArray, W: number, H: number): Block[] {
+  const hist = new Map<number, [number, number, number, number]>()
+  for (const p of pixels) {
+    const i = p * 4
+    const key = ((px[i] >> 3) << 10) | ((px[i + 1] >> 3) << 5) | (px[i + 2] >> 3)
+    const c = hist.get(key) ?? [0, 0, 0, 0]
+    c[0]++
+    c[1] += px[i]
+    c[2] += px[i + 1]
+    c[3] += px[i + 2]
+    hist.set(key, c)
+  }
+  const fills: RGB[] = []
+  for (const [n, r, g, b] of [...hist.values()].sort((a, b) => b[0] - a[0])) {
+    if (n < pixels.length * 0.03) break
+    const c: RGB = [r / n, g / n, b / n]
+    if (!fills.some((f) => dist(f, c) < 16)) fills.push(c)
+  }
+  if (!fills.length) return []
 
-  // connected components
-  const label = new Int32Array(W * H)
-  const blocks: Block[] = []
-  const stack: number[] = []
-  let next = 0
-  for (let start = 0; start < W * H; start++) {
-    if (!mask[start] || label[start]) continue
-    next++
-    label[start] = next
-    stack.push(start)
+  // which fill does each pixel belong to (or none: text, edges)
+  const own = new Map<number, number>()
+  for (const p of pixels) {
+    const i = p * 4
+    const c: RGB = [px[i], px[i + 1], px[i + 2]]
+    let k = -1
+    let best = 18
+    fills.forEach((f, j) => {
+      const d = dist(f, c)
+      if (d < best) [k, best] = [j, d]
+    })
+    if (k >= 0) own.set(p, k)
+  }
+
+  const out: Block[] = []
+  const seen = new Set<number>()
+  for (const [start, k] of own) {
+    if (seen.has(start)) continue
+    seen.add(start)
+    const stack = [start]
     let x0 = W
     let y0 = H
     let x1 = 0
     let y1 = 0
     let area = 0
-    const colors = new Map<number, [number, number, number, number]>()
     while (stack.length) {
       const p = stack.pop()!
       const x = p % W
@@ -139,95 +166,66 @@ function findBlocks(px: Uint8ClampedArray, W: number, H: number, bg: RGB): { blo
       if (x > x1) x1 = x
       if (y < y0) y0 = y
       if (y > y1) y1 = y
-      if ((area & 7) === 0) {
-        const i = p * 4
-        const key = ((px[i] >> 3) << 10) | ((px[i + 1] >> 3) << 5) | (px[i + 2] >> 3)
-        const c = colors.get(key) ?? [0, 0, 0, 0]
-        c[0]++
-        c[1] += px[i]
-        c[2] += px[i + 1]
-        c[3] += px[i + 2]
-        colors.set(key, c)
-      }
-      for (const q of [p - 1, p + 1, p - W, p + W]) {
-        if (q < 0 || q >= W * H || label[q] || !mask[q]) continue
-        if ((q === p - 1 && x === 0) || (q === p + 1 && x === W - 1)) continue
-        label[q] = next
+      // 1px steps: a 1px divider line between two classes must keep them apart
+      // (text doesn't cut a block in two: blocks have padding around their text)
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const q = p + dy * W + dx
+        if (x + dx < 0 || x + dx >= W || seen.has(q) || own.get(q) !== k) continue
+        seen.add(q)
         stack.push(q)
       }
     }
     const bw = x1 - x0 + 1
     const bh = y1 - y0 + 1
-    const rectangular = area / (bw * bh) > 0.75
-    const sized = bw > W * 0.025 && bh > H * 0.02 && area > W * H * 0.0012
-    const notChrome = bw < W * 0.6 && bh < H * 0.9 // header bars, page panels
-    if (!rectangular || !sized || !notChrome) continue
-    // the block's fill: exact average of its most common color
-    let fillColor: RGB = [0, 0, 0]
-    let bestN = -1
-    for (const [n, r, g, b] of colors.values()) if (n > bestN) [fillColor, bestN] = [[r / n, g / n, b / n], n]
-    blocks.push({ x0, y0, x1: x1 + 1, y1: y1 + 1, color: fillColor })
+    if (bw > W * 0.025 && bh > H * 0.02 && area > W * H * 0.0008 && area / (bw * bh) > 0.4)
+      out.push({ x0, y0, x1: x1 + 1, y1: y1 + 1, color: fills[k] })
   }
-  return { blocks, mask }
+  return out
 }
 
-/**
- * Split a block where a thin strip doesn't match its fill: two classes stacked (or side by side)
- * with a small gap that blur or JPEG compression filled in.
- */
-function splitAtGaps(b: Block, px: Uint8ClampedArray, W: number, bg: RGB, minSize: number): Block[] {
-  // a gap pixel looks like the page background; text pixels look like neither, fill pixels like the block
-  const isGap = (x: number, y: number) => {
-    const i = (y * W + x) * 4
-    const c: RGB = [px[i], px[i + 1], px[i + 2]]
-    return dist(c, bg) < dist(c, b.color) && dist(c, bg) < 40
-  }
-  const cuts = (len: number, frac: (t: number) => number) => {
-    const out: [number, number][] = []
-    let runStart = -1
-    for (let t = 0; t <= len; t++) {
-      const gap = t < len && frac(t) > 0.6
-      if (gap && runStart < 0) runStart = t
-      if (!gap && runStart >= 0) {
-        if (t - runStart <= 6 && runStart > minSize && t < len - minSize) out.push([runStart, t])
-        runStart = -1
+function findBlocks(px: Uint8ClampedArray, W: number, H: number, bg: RGB): { blocks: Block[]; mask: Uint8Array } {
+  const fill = new Uint8Array(W * H)
+  for (let i = 0, p = 0; p < W * H; p++, i += 4)
+    if (Math.max(Math.abs(px[i] - bg[0]), Math.abs(px[i + 1] - bg[1]), Math.abs(px[i + 2] - bg[2])) >= 12) fill[p] = 1
+  const mask = open(fill, W, H, Math.max(1, Math.round(W / 700)))
+
+  // connected components of "not background"; each is one class or several touching classes
+  const label = new Uint8Array(W * H)
+  const blocks: Block[] = []
+  const stack: number[] = []
+  for (let start = 0; start < W * H; start++) {
+    if (!mask[start] || label[start]) continue
+    label[start] = 1
+    stack.push(start)
+    const pixels: number[] = []
+    let x0 = W
+    let y0 = H
+    let x1 = 0
+    let y1 = 0
+    while (stack.length) {
+      const p = stack.pop()!
+      pixels.push(p)
+      const x = p % W
+      const y = (p - x) / W
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+      if (y < y0) y0 = y
+      if (y > y1) y1 = y
+      for (const q of [p - 1, p + 1, p - W, p + W]) {
+        if (q < 0 || q >= W * H || label[q] || !mask[q]) continue
+        if ((q === p - 1 && x === 0) || (q === p + 1 && x === W - 1)) continue
+        label[q] = 1
+        stack.push(q)
       }
     }
-    return out
+    const bw = x1 - x0 + 1
+    const bh = y1 - y0 + 1
+    const sized = bw > W * 0.025 && bh > H * 0.02 && pixels.length > W * H * 0.0012
+    const notChrome = bw < W * 0.6 && bh < H * 0.9 // header bars, page panels
+    if (!sized || !notChrome) continue
+    blocks.push(...splitByColor(pixels, px, W, H))
   }
-  const w = b.x1 - b.x0
-  const h = b.y1 - b.y0
-  const rowCuts = cuts(h, (t) => {
-    let n = 0
-    for (let x = b.x0; x < b.x1; x += 2) if (isGap(x, b.y0 + t)) n++
-    return n / Math.ceil(w / 2)
-  })
-  if (rowCuts.length) {
-    const parts: Block[] = []
-    let from = b.y0
-    for (const [s0, s1] of rowCuts) {
-      parts.push({ ...b, y0: from, y1: b.y0 + s0 })
-      from = b.y0 + s1
-    }
-    parts.push({ ...b, y0: from })
-    return parts.flatMap((part) => splitAtGaps(part, px, W, bg, minSize))
-  }
-  const colCuts = cuts(w, (t) => {
-    let n = 0
-    for (let y = b.y0; y < b.y1; y += 2) if (isGap(b.x0 + t, y)) n++
-    return n / Math.ceil(h / 2)
-  })
-  if (colCuts.length) {
-    const parts: Block[] = []
-    let from = b.x0
-    for (const [s0, s1] of colCuts) {
-      parts.push({ ...b, x0: from, x1: b.x0 + s0 })
-      from = b.x0 + s1
-    }
-    parts.push({ ...b, x0: from })
-    return parts
-  }
-  return [b]
+  return { blocks, mask }
 }
 
 /** Is the pixel at p part of a thin line: different from both neighbours `step` away? */
@@ -409,6 +407,7 @@ const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${St
 // ---------- main ----------
 
 export async function readTimetable(dataUrl: string, onProgress?: (fraction: number) => void): Promise<ReadTimetableResult> {
+  for (const k of Object.keys(lastRead)) delete lastRead[k]
   onProgress?.(0.02)
   const img = await loadImage(dataUrl)
   const W = img.naturalWidth
@@ -422,7 +421,12 @@ export async function readTimetable(dataUrl: string, onProgress?: (fraction: num
   const bg = backgroundColor(px)
   const found = findBlocks(px, W, H, bg)
   const mask = found.mask
-  let blocks = found.blocks.flatMap((b) => splitAtGaps(b, px, W, bg, Math.max(8, H * 0.015)))
+  let blocks = found.blocks
+  Object.assign(lastRead, {
+    bg: bg.map(Math.round),
+    rawBlocks: found.blocks.map((b) => [b.x0, b.y0, b.x1, b.y1, b.color.map(Math.round).join(',')]),
+    blocks: blocks.map((b) => [b.x0, b.y0, b.x1, b.y1]),
+  })
   if (blocks.length === 0) throw new TimetableReadError('no_blocks')
   onProgress?.(0.1)
 
@@ -532,41 +536,87 @@ export async function readTimetable(dataUrl: string, onProgress?: (fraction: num
   }
   Object.assign(lastRead, { snapped, shift })
   const minutesAt = (y: number) => Math.round(((y - axis.b) / axis.a + shift) / 15) * 15
+  const yAt = (m: number) => axis.a * (m - shift) + axis.b
 
-  // day columns: the vertical lines between days, labelled by the day names above them
+  // Two classes stacked with no visible line between them look like one block, but each starts
+  // with its own title. Split where a new title starts after a clear vertical gap (on the half hour).
+  const visualLines = (b: Box) => {
+    const inside = words.filter((w) => cx(w) > b.x0 && cx(w) < b.x1 && cy(w) > b.y0 && cy(w) < b.y1).sort((p, q) => cy(p) - cy(q))
+    const rows: Box[] = []
+    for (const w of inside) {
+      const row = rows.find((r) => Math.abs(cy(r) - cy(w)) < (w.y1 - w.y0) * 0.5)
+      if (row) Object.assign(row, { x0: Math.min(row.x0, w.x0), x1: Math.max(row.x1, w.x1), y0: Math.min(row.y0, w.y0), y1: Math.max(row.y1, w.y1) })
+      else rows.push({ x0: w.x0, y0: w.y0, x1: w.x1, y1: w.y1 })
+    }
+    return rows.sort((p, q) => p.y0 - q.y0)
+  }
+  // typical gap between a block's top edge and its first line of text
+  const pads = blocks
+    .map((b) => {
+      const first = visualLines(b)[0]
+      return first ? first.y0 - b.y0 : NaN
+    })
+    .filter((v) => v > 0)
+    .sort((p, q) => p - q)
+  const typicalPad = pads[Math.floor(pads.length / 2)] ?? 5
+  blocks = blocks.flatMap((b) => {
+    const rows = visualLines(b)
+    ;((lastRead.rows ??= []) as unknown[]).push([Math.round(b.x0), Math.round(b.y0), Math.round(b.y1), rows.map((r) => [Math.round(r.y0), Math.round(r.y1)])])
+    if (rows.length < 2) return [b]
+    const lineH = [...rows.map((r) => r.y1 - r.y0)].sort((p, q) => p - q)[Math.floor(rows.length / 2)]
+    const pad = Math.max(2, Math.min(lineH * 1.2, typicalPad))
+    const cuts: number[] = []
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].y0 - rows[i - 1].y1 <= Math.max(lineH * 0.9, 6)) continue
+      const m = Math.round(((rows[i].y0 - pad - axis.b) / axis.a + shift) / 30) * 30
+      const y = yAt(m)
+      // a real title sits one padding below a half-hour line; a wrapped line lands anywhere
+      if (Math.abs(rows[i].y0 - pad - y) > Math.max(3, lineH * 0.35)) continue
+      const prev = cuts.at(-1) ?? b.y0
+      if (y - prev >= axis.a * 30 && b.y1 - y >= axis.a * 30) cuts.push(y)
+    }
+    if (!cuts.length) return [b]
+    const edges = [b.y0, ...cuts, b.y1]
+    return edges.slice(1).map((y1, i) => ({ ...b, y0: edges[i], y1 }))
+  })
+
+  // day columns: day names (Mon, Tue… in several languages) are evenly spaced, one per column
   const gridBottom = Math.max(...blocks.map((b) => b.y1))
   const headers = words
     .filter((w) => w.y1 <= gridTop + 4 && w.y0 >= gridTop - H * 0.3)
     .map((w) => ({ x: cx(w), day: dayOf(w.text) }))
     .filter((h) => h.day >= 0)
-  const seps = columnLines(px, mask, W, gridTop, gridBottom).filter((x) => x >= gridLeft - W * 0.02)
-  const bounds = [...seps]
-  if (!bounds.length || bounds[0] > gridLeft + 2) bounds.unshift(gridLeft - 1)
-  if (bounds.at(-1)! < Math.max(...blocks.map((b) => b.x1)) - 2) bounds.push(W)
-  // drop slivers (double lines, borders) so every column is a real day
-  const widths = bounds.slice(1).map((x, i) => x - bounds[i])
-  const typical = [...widths].sort((a, b) => a - b)[Math.floor(widths.length / 2)] ?? W
-  const columns: { l: number; r: number; day: number }[] = []
-  for (let i = 0; i < widths.length; i++) if (widths[i] > typical * 0.5) columns.push({ l: bounds[i], r: bounds[i + 1], day: -1 })
+    .sort((a, b) => a.x - b.x)
+  const days: { x: number; day: number }[] = []
+  for (const h of headers) if (!days.some((d) => d.day === h.day) && (!days.length || h.day > days.at(-1)!.day)) days.push(h)
 
-  let known = 0
-  for (const col of columns) {
-    const h = headers.find((hh) => hh.x >= col.l && hh.x < col.r)
-    if (h) {
-      col.day = h.day
-      known++
+  let dayAt: (x: number) => number
+  if (days.length >= 2) {
+    const steps: number[] = []
+    for (let i = 1; i < days.length; i++) steps.push((days[i].x - days[i - 1].x) / (days[i].day - days[i - 1].day))
+    const spacing = steps.sort((a, b) => a - b)[Math.floor(steps.length / 2)]
+    // where does a column start relative to its day name? most classes start at a column's left edge
+    const bins = new Map<number, number>()
+    for (const b of blocks) {
+      const rel = Math.round((((b.x0 - days[0].x) % spacing) + spacing) % spacing / 4)
+      bins.set(rel, (bins.get(rel) ?? 0) + 1)
     }
-  }
-  if (known === 0) notes.push('days_guessed')
-  Object.assign(lastRead, { seps, columns: columns.map((c) => [Math.round(c.l), Math.round(c.r), c.day]), headers })
-  // fill columns without a readable day name from their neighbours (or Monday onwards)
-  const anchor = columns.findIndex((c) => c.day >= 0)
-  columns.forEach((c, i) => {
-    if (c.day < 0) c.day = anchor >= 0 ? columns[anchor].day + (i - anchor) : i
-  })
-  const dayAt = (x: number) => {
-    const col = columns.find((c) => x >= c.l && x < c.r) ?? columns.reduce((a, b) => (Math.abs(cx({ x0: b.l, x1: b.r, y0: 0, y1: 0 }) - x) < Math.abs(cx({ x0: a.l, x1: a.r, y0: 0, y1: 0 }) - x) ? b : a))
-    return Math.max(0, Math.min(6, col.day))
+    const rel = [...bins.entries()].sort((a, b) => b[1] - a[1])[0][0] * 4
+    const start0 = days[0].x - ((spacing - rel) % spacing) // the column's left edge is never right of its name
+    dayAt = (x) => Math.max(0, Math.min(6, days[0].day + Math.floor((x - start0 + 2) / spacing)))
+    Object.assign(lastRead, { spacing, rel, start0, days })
+  } else {
+    // no readable day names: use the vertical lines between days, Monday onwards
+    const seps = columnLines(px, mask, W, gridTop, gridBottom).filter((x) => x >= gridLeft - W * 0.02)
+    const bounds = [...seps]
+    if (!bounds.length || bounds[0] > gridLeft + 2) bounds.unshift(gridLeft - 1)
+    if (bounds.at(-1)! < Math.max(...blocks.map((b) => b.x1)) - 2) bounds.push(W)
+    const widths = bounds.slice(1).map((x, i) => x - bounds[i])
+    const typical = [...widths].sort((a, b) => a - b)[Math.floor(widths.length / 2)] ?? W
+    const cols = bounds.slice(1).map((r, i) => ({ l: bounds[i], r })).filter((c) => c.r - c.l > typical * 0.5)
+    dayAt = (x) => Math.max(0, Math.min(6, cols.findIndex((c) => x >= c.l && x < c.r)))
+    notes.push('days_guessed')
+    Object.assign(lastRead, { seps })
   }
 
   // blocks → slots, grouped into courses by name, then by (nearly identical) color
@@ -608,6 +658,11 @@ export async function readTimetable(dataUrl: string, onProgress?: (fraction: num
     gr.names.forEach((n, i) => {
       const score = (count.get(gr.keys[i]) ?? 0) * 1000 + n.length
       if (score > bestScore) [bestName, bestScore] = [n, score]
+    })
+    // narrow blocks often cut a name short: prefer a longer reading that contains the common one
+    const bestKey = normalize(bestName)
+    gr.names.forEach((n, i) => {
+      if (n.length > bestName.length && gr.keys[i].startsWith(bestKey)) bestName = n
     })
     return bestName || `Course ${++unnamed}`
   })

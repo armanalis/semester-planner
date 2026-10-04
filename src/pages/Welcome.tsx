@@ -59,17 +59,30 @@ async function toDataUrl(file: File): Promise<string> {
   return canvas.toDataURL('image/png')
 }
 
-/** The highlighter color closest to a course's color in the screenshot. */
-function nearestHue([r, g, b]: [number, number, number]): HueKey {
+/**
+ * A color per course, close to its color in the screenshot. Each course gets its own color while
+ * there are enough to go round (most confident matches pick first).
+ */
+function assignHues(colors: ([number, number, number] | undefined)[]): HueKey[] {
   const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
-  let best: HueKey = 'slate'
-  let bestD = Infinity
-  for (const h of Object.keys(HUES) as HueKey[]) {
+  const keys = Object.keys(HUES) as HueKey[]
+  const d = (c: [number, number, number], h: HueKey) => {
     const [hr, hg, hb] = hex(HUES[h].hl[0])
-    const d = (hr - r) ** 2 + (hg - g) ** 2 + (hb - b) ** 2
-    if (d < bestD) [best, bestD] = [h, d]
+    return (hr - c[0]) ** 2 + (hg - c[1]) ** 2 + (hb - c[2]) ** 2
   }
-  return best
+  const out: HueKey[] = colors.map((_, i) => HUE_ORDER[i % HUE_ORDER.length])
+  const used = new Set<HueKey>()
+  const order = colors
+    .map((c, i) => ({ c, i, best: c ? Math.min(...keys.map((h) => d(c, h))) : Infinity }))
+    .filter((x): x is { c: [number, number, number]; i: number; best: number } => !!x.c)
+    .sort((a, b) => a.best - b.best)
+  for (const { c, i } of order) {
+    const free = keys.filter((h) => !used.has(h))
+    const pick = (free.length ? free : keys).reduce((a, h) => (d(c, h) < d(c, a) ? h : a))
+    used.add(pick)
+    out[i] = pick
+  }
+  return out
 }
 
 export default function Welcome() {
@@ -114,11 +127,12 @@ export default function Welcome() {
       // read in the browser: free, private, no server involved
       const { readTimetable } = await import('../lib/readTimetable')
       const body = await readTimetable(image, setProgress)
+      const hues = assignHues((body.courses ?? []).map((c) => c.color))
       const draftCourses: DraftCourse[] = (body.courses ?? []).map((c, i) => ({
         id: uid(),
         name: c.name.trim(),
         short: (c.short || shortFrom(c.name)).trim().slice(0, 8),
-        hue: c.color ? nearestHue(c.color) : HUE_ORDER[i % HUE_ORDER.length],
+        hue: hues[i],
       }))
       const byName = (name: string) => draftCourses.find((c) => c.name.toLowerCase() === name.trim().toLowerCase())
       const draftSlots: DraftSlot[] = []
