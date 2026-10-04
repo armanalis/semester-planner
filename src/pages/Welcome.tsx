@@ -72,12 +72,6 @@ function nearestHue([r, g, b]: [number, number, number]): HueKey {
   return best
 }
 
-interface ParsedTimetable {
-  courses: { name: string; short: string; color?: [number, number, number] }[]
-  slots: { course: string; day: number; start: string; end: string; kind: SlotKind }[]
-  note: string
-}
-
 export default function Welcome() {
   const T = useT()
   const { t } = T
@@ -119,7 +113,7 @@ export default function Welcome() {
     try {
       // read in the browser: free, private, no server involved
       const { readTimetable } = await import('../lib/readTimetable')
-      const body: Partial<ParsedTimetable> = await readTimetable(image, setProgress)
+      const body = await readTimetable(image, setProgress)
       const draftCourses: DraftCourse[] = (body.courses ?? []).map((c, i) => ({
         id: uid(),
         name: c.name.trim(),

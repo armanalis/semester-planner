@@ -20,7 +20,7 @@ const lanAddress = () =>
 
 /**
  * Runs the files in /api (Vercel Functions with Web Request/Response handlers) inside the dev server,
- * so sync and screenshot reading work locally exactly like after deploying.
+ * so sync works locally exactly like after deploying.
  */
 function apiDev(): Plugin {
   return {
@@ -67,7 +67,7 @@ function apiDev(): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  // make .env.local (e.g. ANTHROPIC_API_KEY) visible to the /api handlers in dev
+  // make .env.local (e.g. the Upstash sync credentials) visible to the /api handlers in dev
   for (const [k, v] of Object.entries(loadEnv(mode, process.cwd(), ''))) process.env[k] ??= v
   return {
     plugins: [react(), tailwindcss(), apiDev()],

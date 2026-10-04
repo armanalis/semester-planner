@@ -377,11 +377,8 @@ const en = {
   orWord: 'or',
   useTemplate: 'Use the Polito Data Science 2026/27 timetable',
   startEmpty: 'Skip, I’ll add classes myself',
-  parseMissingKey:
-    'Reading screenshots needs an Anthropic API key on the server. Add ANTHROPIC_API_KEY to .env.local and restart, or add your classes by hand.',
   parseFailed: 'Couldn’t read this image: {error}. Try a sharper screenshot, or add your classes by hand.',
   parseEmpty: 'No classes found in this image. Try a screenshot of the full week view.',
-  parseUnavailable: 'Reading screenshots isn’t available right now. Use the template or add your classes by hand.',
   checkIntro: 'Fix anything that looks off. Same course, same color.',
   foundSummary: 'Found {courses} courses and {slots} class times.',
   addCourse: 'Add course',
@@ -758,11 +755,8 @@ const tr: Record<Key, string> = {
   orWord: 'ya da',
   useTemplate: 'Polito Data Science 2026/27 programını kullan',
   startEmpty: 'Geç, dersleri kendim ekleyeceğim',
-  parseMissingKey:
-    'Ekran görüntüsünü okumak için sunucuda Anthropic API anahtarı gerekiyor. .env.local dosyasına ANTHROPIC_API_KEY ekleyip yeniden başlat ya da dersleri elle ekle.',
   parseFailed: 'Bu görsel okunamadı: {error}. Daha net bir ekran görüntüsü dene ya da dersleri elle ekle.',
   parseEmpty: 'Bu görselde ders bulunamadı. Haftalık görünümün tamamının ekran görüntüsünü dene.',
-  parseUnavailable: 'Ekran görüntüsü okuma şu an kullanılamıyor. Şablonu kullan ya da dersleri elle ekle.',
   checkIntro: 'Yanlış görünen her şeyi düzelt. Aynı ders, aynı renk.',
   foundSummary: '{courses} ders ve {slots} ders saati bulundu.',
   addCourse: 'Ders ekle',
