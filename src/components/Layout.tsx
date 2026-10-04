@@ -14,13 +14,19 @@ import type { Lang, Theme } from '../types'
 import { Logo } from './Logo'
 import { Dialog } from './ui'
 
-const SCHEME: Record<Theme, string> = { system: 'light dark', light: 'light', dark: 'dark' }
-
-/** Theme only flips color-scheme; every color token is light-dark(). */
+/** Resolve the theme (system follows the OS, live) and put it on <html> for the CSS. */
 export function usePrefsOnDocument() {
   const { theme, lang } = usePlanner((s) => s.prefs)
   useEffect(() => {
-    document.documentElement.style.colorScheme = SCHEME[theme]
+    const media = matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const dark = theme === 'dark' || (theme === 'system' && media.matches)
+      document.documentElement.dataset.scheme = dark ? 'dark' : 'light'
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+    }
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
   }, [theme])
   useEffect(() => {
     document.documentElement.lang = lang
@@ -136,7 +142,7 @@ function Sidebar({ onBackup }: { onBackup: () => void }) {
   const counts = useOpenCounts()
 
   return (
-    <aside className="sticky top-0 hidden h-dvh flex-col border-r border-margin/35 bg-paper px-3 py-5 md:flex">
+    <aside className="sticky top-0 hidden h-dvh flex-col border-r border-rule bg-paper px-3 py-5 md:flex">
       <div className="px-2">
         <Brand />
       </div>
@@ -180,9 +186,9 @@ function Sidebar({ onBackup }: { onBackup: () => void }) {
                 )
               }
             >
-              <span className="highlighter h-6 w-1.5 shrink-0" aria-hidden />
+              <span className="course-block size-2.5 shrink-0 rounded-full" aria-hidden />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm leading-tight font-bold text-[var(--ink)]">{c.short}</span>
+                <span className="block text-sm leading-tight font-semibold">{c.short}</span>
                 <span className="block truncate text-xs text-ink-soft">{c.name}</span>
               </span>
               {n && (
@@ -231,7 +237,7 @@ function SyncButton() {
       <span
         className={clsx(
           'ml-auto size-2 rounded-full',
-          !code ? 'bg-rule-strong' : status === 'error' || status === 'offline' ? 'bg-danger' : 'bg-[light-dark(#2f8a3a,#7ddc8a)]',
+          !code ? 'bg-rule-strong' : status === 'error' || status === 'offline' ? 'bg-danger' : 'bg-ok',
         )}
         title={code ? t('syncOn') : t('syncOff')}
         aria-hidden

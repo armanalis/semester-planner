@@ -216,11 +216,11 @@ export function WeekCalendar({
             const today = isSameDay(date, now)
             return (
               <div key={d} className="flex items-baseline gap-1.5 px-2 pt-1 pb-2">
-                <span className={clsx('text-sm', today ? 'font-bold text-pen' : 'text-ink-soft')}>{T.days[d]}</span>
+                <span className={clsx('text-sm', today ? 'font-semibold text-ink' : 'text-ink-soft')}>{T.days[d]}</span>
                 <span
                   className={clsx(
                     'text-xl leading-none font-bold',
-                    today && 'rounded-md bg-pen px-1.5 py-0.5 text-on-pen',
+                    today && 'rounded-md bg-primary px-1.5 py-0.5 text-on-primary',
                     d >= 5 && !today && 'text-ink-soft',
                   )}
                 >
@@ -287,7 +287,7 @@ export function WeekCalendar({
                 onPointerUp={onUp}
                 onPointerCancel={() => setDrag(null)}
                 className={clsx(
-                  'quadretti relative cursor-cell touch-pan-y border-l border-rule-strong select-none',
+                  'hour-grid relative cursor-cell touch-pan-y border-l border-rule-strong select-none',
                   d >= 5 && 'bg-paper',
                 )}
                 style={{ height: (END_H - START_H) * HOUR }}
@@ -403,7 +403,7 @@ function SlotBlock({
       title={label}
       aria-label={label}
       style={{ ...style, ...hueVars(course.hue) }}
-      className={clsx('absolute flex flex-col items-start overflow-hidden px-2 py-1 text-left', skipped ? 'skipped' : 'highlighter')}
+      className={clsx('absolute flex flex-col items-start overflow-hidden px-2 py-1 text-left', skipped ? 'skipped' : 'course-block')}
     >
       <span className={clsx('text-[13px] leading-tight font-bold', skipped ? 'text-ink-faint line-through' : 'text-[var(--ink)]')}>
         {course.short}
@@ -445,7 +445,7 @@ function StudyBlockView({
       onPointerDown={(e) => onDragStart(e, 'move')}
       style={{ ...style, ...hueVars(course.hue) }}
       className={clsx(
-        'pen-block group absolute z-[1] flex cursor-grab gap-1.5 overflow-hidden px-1.5 active:cursor-grabbing',
+        'study-block group absolute z-[1] flex cursor-grab gap-1.5 overflow-hidden px-1.5 active:cursor-grabbing',
         compact ? 'items-center' : 'items-start py-1',
         dragging && 'opacity-30',
       )}

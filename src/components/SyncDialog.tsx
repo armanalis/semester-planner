@@ -204,7 +204,7 @@ function Connected() {
                   ? 'size-2 rounded-full bg-danger'
                   : status === 'syncing'
                     ? 'size-2 animate-pulse rounded-full bg-pen'
-                    : 'size-2 rounded-full bg-[light-dark(#2f8a3a,#7ddc8a)]'
+                    : 'size-2 rounded-full bg-ok'
               }
               aria-hidden
             />

@@ -49,7 +49,7 @@ export function Dialog({
       {open && (
         <div className="p-5 sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-4">
-            <h2 className="text-lg leading-snug font-bold">{title}</h2>
+            <h2 className="text-lg leading-snug font-semibold">{title}</h2>
             <button onClick={onClose} className="btn btn-quiet -mt-1 -mr-2 p-1.5" aria-label={t('close')}>
               <X size={18} />
             </button>
@@ -61,7 +61,7 @@ export function Dialog({
   )
 }
 
-/** Round pen-drawn checkbox. Fills with the course highlighter when checked. */
+/** Round checkbox. Fills with the course color when checked. */
 export function Tick({
   checked,
   onChange,
@@ -115,7 +115,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           className={clsx(
             'rounded-md px-3 py-1 text-sm font-semibold transition-colors',
-            value === o.value ? 'bg-pen text-on-pen' : 'text-ink-soft hover:text-ink',
+            value === o.value ? 'bg-primary text-on-primary' : 'text-ink-soft hover:text-ink',
           )}
         >
           {o.label}
@@ -125,7 +125,7 @@ export function Segmented<T extends string>({
   )
 }
 
-/** Progress drawn as a highlighter stroke over a ruled track. */
+/** Progress bar in the course color (or yellow outside a course). */
 export function Meter({ value, total, className }: { value: number; total: number; className?: string }) {
   const pct = total === 0 ? 0 : Math.round((value / total) * 100)
   return (
@@ -156,9 +156,9 @@ export function Section({
   className?: string
 }) {
   return (
-    <section className={clsx('border-t border-rule-strong pt-4', className)}>
+    <section className={clsx('border-t border-rule pt-5', className)}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-bold">{title}</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
         {aside && <div className="text-sm text-ink-soft">{aside}</div>}
       </div>
       {children}

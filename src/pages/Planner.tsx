@@ -64,7 +64,7 @@ export default function Planner() {
       <header className="mb-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{weekTitle(monday, T)}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{weekTitle(monday, T)}</h1>
             <div className="flex items-center">
               <button className="btn btn-quiet p-1.5" aria-label={t('prevWeek')} onClick={() => setMonday((m) => addWeeks(m, -1))}>
                 <ChevronLeft size={20} />

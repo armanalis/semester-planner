@@ -1,28 +1,36 @@
-@import '@fontsource-variable/instrument-sans';
+@import '@fontsource-variable/geist';
 @import 'tailwindcss';
 
-/* Every token is light-dark(paper, night notebook). The theme switch only sets color-scheme. */
+/*
+  Calm, neutral interface: color comes only from the courses.
+  Light values live here; dark values are set on :root[data-scheme='dark'] (see below).
+  Don't use light-dark() in this file: the production CSS build rewrites it to follow
+  the OS setting only, which breaks the in-app light/dark switch.
+*/
 @theme {
-  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
 
-  /* paper + ink */
-  --color-paper: light-dark(#fbfcfe, #0f141f);
-  --color-sheet: light-dark(#ffffff, #151b29);
-  --color-raised: light-dark(#ffffff, #1a2132);
-  --color-rule: light-dark(#dfe6f2, #232b3f);
-  --color-rule-strong: light-dark(#c9d5ea, #364260);
-  --color-ink: light-dark(#1b2540, #e4e8f4);
-  --color-ink-soft: light-dark(#4a5672, #a3adc6);
-  --color-ink-faint: light-dark(#8792ab, #7a85a0);
-  --color-pen: light-dark(#2440c4, #93a6ff);
-  --color-pen-hover: light-dark(#1b33a6, #b4c1ff);
-  --color-pen-soft: light-dark(#e8ecfc, #222b4b);
-  --color-on-pen: light-dark(#ffffff, #0f1530);
-  --color-margin: light-dark(#e0484e, #ff6f75);
-  --color-danger: light-dark(#b42323, #ff8f8f);
-  --color-danger-soft: light-dark(#fdecec, #3a1f27);
-  --color-mark: light-dark(#fceb8f, #5c5220);
-  --color-mark-ink: light-dark(#7a6408, #f2de72);
+  --color-paper: #f6f7f9;
+  --color-sheet: #ffffff;
+  --color-raised: #ffffff;
+  --color-rule: #e7e9ee;
+  --color-rule-strong: #d6dae1;
+  --color-ink: #171a21;
+  --color-ink-soft: #586070;
+  --color-ink-faint: #8e96a3;
+  --color-primary: #171a21;
+  --color-primary-hover: #2e333d;
+  --color-on-primary: #ffffff;
+  --color-pen: #3451d1;
+  --color-pen-hover: #2a43b3;
+  --color-pen-soft: #eef1fc;
+  --color-on-pen: #ffffff;
+  --color-margin: #e5484d;
+  --color-danger: #c8312b;
+  --color-danger-soft: #fdeeee;
+  --color-ok: #2f8a3a;
+  --color-mark: #fde68a;
+  --color-mark-ink: #8a6d00;
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
@@ -30,17 +38,47 @@
 
 @layer base {
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
   }
+  :root[data-scheme='dark'] {
+    color-scheme: dark;
+    --color-paper: #0e1014;
+    --color-sheet: #15181e;
+    --color-raised: #1b1f26;
+    --color-rule: #252a33;
+    --color-rule-strong: #343b47;
+    --color-ink: #eceef2;
+    --color-ink-soft: #a3a9b5;
+    --color-ink-faint: #6e7582;
+    --color-primary: #eceef2;
+    --color-primary-hover: #ffffff;
+    --color-on-primary: #0e1014;
+    --color-pen: #93a5ff;
+    --color-pen-hover: #b0beff;
+    --color-pen-soft: #1d2340;
+    --color-on-pen: #0e1014;
+    --color-margin: #ff6b6b;
+    --color-danger: #ff8a85;
+    --color-danger-soft: #3a1d1f;
+    --color-ok: #7ddc8a;
+    --color-mark: #5a4e1b;
+    --color-mark-ink: #f5d971;
+  }
+
   html {
     background: var(--color-paper);
     color: var(--color-ink);
     font-feature-settings: 'tnum' 1;
     -webkit-font-smoothing: antialiased;
   }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
   ::selection {
-    background: var(--color-mark);
-    color: var(--color-ink);
+    background: color-mix(in srgb, var(--color-pen) 25%, transparent);
   }
   :focus-visible {
     outline: 2px solid var(--color-pen);
@@ -54,71 +92,50 @@
     outline: none;
   }
   dialog::backdrop {
-    background: light-dark(rgb(27 37 64 / 0.28), rgb(4 7 15 / 0.6));
+    background: rgb(10 12 16 / 0.45);
   }
 }
 
 @layer components {
-  /* graph paper: half-hour squares, stronger line every hour */
-  .quadretti {
+  /* calendar column: a quiet line every hour */
+  .hour-grid {
     background-color: var(--color-sheet);
-    background-image:
-      linear-gradient(to bottom, var(--color-rule-strong) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--color-rule) 1px, transparent 1px),
-      linear-gradient(to right, var(--color-rule) 1px, transparent 1px);
-    background-size:
-      100% var(--hour),
-      28px calc(var(--hour) / 2),
-      28px calc(var(--hour) / 2);
+    background-image: linear-gradient(to bottom, var(--color-rule) 1px, transparent 1px);
+    background-size: 100% var(--hour);
   }
 
-  /* a lecture drawn with a highlighter: uneven marker edges */
-  .highlighter {
+  /* a class from the timetable */
+  .course-block {
     background: var(--hl);
-    box-shadow: inset 0 0 0 1px
-      light-dark(color-mix(in srgb, var(--ink) 10%, transparent), color-mix(in srgb, var(--ink) 22%, transparent));
-    border-radius: 3px 9px 4px 10px / 8px 3px 9px 4px;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 12%, transparent);
   }
 
-  /* a study block drawn in pen; fills with highlighter when done */
-  .pen-block {
-    --done-fill: color-mix(in srgb, var(--hl) 70%, var(--color-sheet));
-    background-color: color-mix(in srgb, var(--color-sheet) 86%, transparent);
+  /* a study block you planned: a card with a course-colored edge; fills in when done */
+  .study-block {
+    --done-fill: color-mix(in srgb, var(--hl) 75%, var(--color-sheet));
+    background-color: var(--color-sheet);
     background-image: linear-gradient(var(--done-fill), var(--done-fill));
     background-repeat: no-repeat;
     background-size: 0% 100%;
-    border: 1.5px dashed var(--ink);
-    border-radius: 6px;
-    transition: background-size 420ms cubic-bezier(0.3, 0.7, 0.2, 1);
+    border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+    border-left: 3px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgb(10 12 16 / 0.06);
+    transition: background-size 380ms cubic-bezier(0.3, 0.7, 0.2, 1);
   }
-  .pen-block[data-done='true'] {
+  .study-block[data-done='true'] {
     background-size: 100% 100%;
-    border-style: solid;
   }
 
   .skipped {
     background: repeating-linear-gradient(
       -45deg,
-      color-mix(in srgb, var(--color-ink-faint) 14%, transparent) 0 4px,
+      color-mix(in srgb, var(--color-ink-faint) 12%, transparent) 0 4px,
       transparent 4px 9px
     );
     border: 1px dashed var(--color-rule-strong);
-    border-radius: 6px;
-  }
-
-  /* highlighter stroke behind a headline, wraps line by line.
-     Light paper: a full highlight. Dark paper: a bright underline swipe (a fill would turn muddy). */
-  .marker {
-    --m-fill: light-dark(var(--hl), transparent);
-    --m-line: light-dark(transparent, color-mix(in srgb, var(--ink) 85%, transparent));
-    background-image:
-      linear-gradient(transparent 0.22em, var(--m-fill) 0.22em, var(--m-fill) 0.98em, transparent 0.98em),
-      linear-gradient(transparent 0.93em, var(--m-line) 0.93em, var(--m-line) 1.08em, transparent 1.08em);
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-    padding: 0 0.18em;
-    margin: 0 -0.18em;
-    border-radius: 0.2em 0.5em 0.3em 0.6em;
+    border-radius: 8px;
   }
 
   /* rendered notes */
@@ -133,7 +150,7 @@
   .md h1,
   .md h2,
   .md h3 {
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.25;
     margin-top: 1.2em;
   }
@@ -163,18 +180,18 @@
   }
   .md input[type='checkbox'] {
     margin-right: 0.45em;
-    accent-color: var(--ink, var(--color-pen));
+    accent-color: var(--color-pen);
   }
   .md a {
     color: var(--color-pen);
     text-decoration: underline;
   }
   .md strong {
-    font-weight: 700;
+    font-weight: 600;
   }
   .md code {
     font-size: 0.9em;
-    background: var(--color-pen-soft);
+    background: var(--color-paper);
     border-radius: 4px;
     padding: 0.1em 0.3em;
   }
@@ -190,7 +207,7 @@
     padding: 0;
   }
   .md blockquote {
-    border-left: 3px solid var(--hl, var(--color-mark));
+    border-left: 3px solid var(--color-rule-strong);
     padding-left: 0.8em;
     color: var(--color-ink-soft);
   }
@@ -215,7 +232,7 @@
     min-height: 2.5rem;
     border: 1px solid var(--color-rule-strong);
     background: var(--color-raised);
-    border-radius: 9px;
+    border-radius: 10px;
     padding: 0.45rem 0.75rem;
     font-size: 0.9rem;
     color: var(--color-ink);
@@ -223,9 +240,6 @@
   }
   .field:hover {
     border-color: var(--color-ink-faint);
-  }
-  .field[type='date'] {
-    min-width: 10.5rem;
   }
   .field::placeholder {
     color: var(--color-ink-faint);
@@ -235,15 +249,18 @@
     outline-offset: 0;
     border-color: transparent;
   }
+  .field[type='date'] {
+    min-width: 10.5rem;
+  }
 
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 0.42rem 0.8rem;
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 550;
     transition:
       background-color 150ms,
       color 150ms,
@@ -253,38 +270,44 @@
     transform: scale(0.97);
   }
   .btn:disabled {
-    opacity: 0.55;
+    opacity: 0.5;
     cursor: default;
   }
   .btn-lg {
     min-height: 2.75rem;
     padding: 0.6rem 1.25rem;
     font-size: 0.95rem;
-    border-radius: 10px;
   }
   .btn-primary {
-    background: var(--color-pen);
-    color: var(--color-on-pen);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
   }
-  .btn-primary:hover {
-    background: var(--color-pen-hover);
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
   }
   .btn-quiet {
     color: var(--color-ink-soft);
   }
-  .btn-quiet:hover {
-    background: var(--color-pen-soft);
+  .btn-quiet:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-ink) 6%, transparent);
     color: var(--color-ink);
+  }
+  .btn-outline {
+    border: 1px solid var(--color-rule-strong);
+    color: var(--color-ink);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-ink) 5%, transparent);
   }
   .btn-danger {
     color: var(--color-danger);
   }
-  .btn-danger:hover {
+  .btn-danger:hover:not(:disabled) {
     background: var(--color-danger-soft);
   }
 }
 
-/* a highlighter stroke drawn left to right (welcome preview) */
+/* a block drawn in left to right (onboarding preview) */
 @keyframes sweep {
   from {
     clip-path: inset(0 100% 0 0 round 6px);

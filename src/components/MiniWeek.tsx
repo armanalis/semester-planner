@@ -19,7 +19,7 @@ export interface MiniSlot {
 
 const HOUR = 30
 
-/** A small read-only week on graph paper. Blocks draw in like highlighter strokes. */
+/** A small read-only week. Blocks draw in from left to right. */
 export function MiniWeek({ courses, slots }: { courses: MiniCourse[]; slots: MiniSlot[] }) {
   const { days: dayNames } = useT()
   const byId = new Map(courses.map((c) => [c.id, c]))
@@ -52,13 +52,13 @@ export function MiniWeek({ courses, slots }: { courses: MiniCourse[]; slots: Min
           style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0,1fr))` }}
         >
           {days.map((d) => (
-            <div key={d} className="quadretti relative border-l border-rule-strong first:border-l-0" style={{ height }}>
+            <div key={d} className="hour-grid relative border-l border-rule-strong first:border-l-0" style={{ height }}>
               {layoutDay(valid.filter((s) => s.day === d)).map((s) => {
                 const c = byId.get(s.courseId)!
                 return (
                   <div
                     key={s.id}
-                    className="highlighter absolute overflow-hidden px-1 pt-0.5 text-[10px] leading-tight font-bold text-[var(--ink)] motion-safe:animate-[sweep_520ms_cubic-bezier(.3,.7,.2,1)_both]"
+                    className="course-block absolute overflow-hidden px-1 pt-0.5 text-[10px] leading-tight font-bold text-[var(--ink)] motion-safe:animate-[sweep_520ms_cubic-bezier(.3,.7,.2,1)_both]"
                     style={{
                       ...hueVars(c.hue),
                       top: (s.start / 60 - startH) * HOUR + 1,

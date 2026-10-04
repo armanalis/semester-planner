@@ -53,7 +53,7 @@ export default function Review() {
     <div className="mx-auto max-w-[72rem] px-4 pt-8 pb-20 sm:px-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('weeklyReview')}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('weeklyReview')}</h1>
           <div className="mt-1 flex items-center gap-1">
             <button className="btn btn-quiet -ml-2 p-1.5" aria-label={t('prevWeek')} onClick={() => setMonday((m) => addWeeks(m, -1))}>
               <ChevronLeft size={18} />

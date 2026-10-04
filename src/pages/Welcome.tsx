@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Check, ChevronRight, ImageUp, LoaderCircle, Plus, QrCode, RefreshCw, Trash2 } from 'lucide-react'
+import { ChevronRight, ImageUp, LoaderCircle, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { PrefSwitches } from '../components/Layout'
@@ -8,7 +8,7 @@ import { MiniWeek } from '../components/MiniWeek'
 import { kindOptions } from '../components/SlotDialog'
 import { Label } from '../components/ui'
 import { SEED_COURSES, SEED_SLOTS, TEMPLATE_PROFILE } from '../data/seed'
-import { HUES, hueVars, swatch } from '../lib/hues'
+import { HUES, swatch } from '../lib/hues'
 import { useT } from '../lib/i18n'
 import { uid } from '../lib/id'
 import { useUI } from '../lib/ui'
@@ -168,60 +168,40 @@ export default function Welcome() {
   }
 
   const steps = [t('stepAbout'), t('stepTimetable'), t('stepCheck')]
-  const live = step === 3
-  const previewCourses = live ? courses : SEED_COURSES
-  const previewSlots = live ? slots : SEED_SLOTS
+  const heading = [
+    { title: t('welcomeTitle'), intro: t('welcomeIntro') },
+    { title: t('timetableTitle'), intro: t('timetableIntro') },
+    { title: t('checkTitle'), intro: t('checkIntro') },
+  ][step - 1]
 
   return (
-    <div className="min-h-dvh px-5 py-6 sm:px-10">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-7xl flex-col">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <Logo />
-            <span className="font-bold">{t('appName')}</span>
-          </div>
-          <PrefSwitches />
-        </header>
+    <div className="flex min-h-dvh flex-col px-5 py-5 sm:px-8">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <Logo />
+          <span className="font-semibold">{t('appName')}</span>
+        </div>
+        <PrefSwitches />
+      </header>
 
-        <main
-          className={clsx(
-            'grid flex-1 gap-x-16 gap-y-10 py-10 lg:py-14',
-            live ? 'items-start lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]' : 'items-center lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]',
-          )}
-        >
-          <section className={clsx('min-w-0', !live && 'max-w-xl')}>
-            <h1
-              className="text-4xl leading-[1.1] font-bold tracking-tight text-balance sm:text-[2.9rem]"
-              style={{ '--hl': 'var(--color-mark)', '--ink': 'var(--color-mark-ink)' } as React.CSSProperties}
-            >
-              <span className="marker">{t('welcomeTitle')}</span>
-            </h1>
-            <p className="mt-3 text-lg text-ink-soft">{t('welcomeIntro')}</p>
+      <main className="flex flex-1 items-start justify-center py-8 sm:items-center sm:py-12">
+        <div className={clsx('w-full', step === 3 ? 'max-w-4xl' : 'max-w-lg')}>
+          <div className="rounded-2xl border border-rule bg-sheet p-6 shadow-[0_1px_2px_rgb(10_12_16/0.04),0_16px_48px_-28px_rgb(10_12_16/0.3)] sm:p-9">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-ink-soft">{t('stepOf', { n: step, total: steps.length })}</span>
+              <span className="font-medium">{steps[step - 1]}</span>
+            </div>
+            <div className="mt-2.5 flex gap-1.5" aria-hidden>
+              {steps.map((label, i) => (
+                <span key={label} className={clsx('h-1 flex-1 rounded-full transition-colors', i < step ? 'bg-primary' : 'bg-rule')} />
+              ))}
+            </div>
 
-            <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" aria-label={t('welcomeTitle')}>
-              {steps.map((label, i) => {
-                const n = i + 1
-                return (
-                  <li key={label} className="flex items-center gap-3" aria-current={step === n ? 'step' : undefined}>
-                    <span className={clsx('flex items-center gap-2', step === n ? 'font-bold text-ink' : step > n ? 'text-ink-soft' : 'text-ink-faint')}>
-                      <span
-                        className={clsx(
-                          'grid size-7 place-items-center rounded-full text-xs font-bold transition-colors',
-                          step > n ? 'bg-pen text-on-pen' : step === n ? 'bg-pen-soft text-pen ring-2 ring-pen' : 'ring-1 ring-rule-strong',
-                        )}
-                      >
-                        {step > n ? <Check size={14} strokeWidth={3} /> : n}
-                      </span>
-                      {label}
-                    </span>
-                    {n < steps.length && <span className={clsx('hidden h-px w-8 sm:block sm:w-12', step > n ? 'bg-pen' : 'bg-rule-strong')} aria-hidden />}
-                  </li>
-                )
-              })}
-            </ol>
+            <h1 className="mt-8 text-[1.75rem] leading-tight font-semibold tracking-tight sm:text-[2rem]">{heading.title}</h1>
+            <p className="mt-2 text-ink-soft">{heading.intro}</p>
 
-            <div className="mt-9">
-              {step === 1 && <AboutStep profile={profile} onChange={setProfile} onNext={() => setStep(2)} onSync={() => openSync()} />}
+            <div className="mt-8">
+              {step === 1 && <AboutStep profile={profile} onChange={setProfile} onNext={() => setStep(2)} />}
               {step === 2 && (
                 <TimetableStep
                   image={image}
@@ -256,49 +236,23 @@ export default function Welcome() {
                 />
               )}
             </div>
-          </section>
+          </div>
 
-          <aside className="hidden lg:sticky lg:top-8 lg:block">
-            <figure className="rounded-2xl border border-rule-strong bg-sheet p-5 shadow-[0_40px_90px_-50px_rgb(10_15_30/0.6)]">
-              <figcaption className="mb-4 flex items-baseline justify-between gap-3">
-                <span className="font-semibold">{live ? t('previewLive') : t('previewSample')}</span>
-                {live && <span className="text-xs text-ink-soft">{t('foundSummary', { courses: courses.length, slots: slots.length })}</span>}
-              </figcaption>
-              <MiniWeek key={live ? 'live' : 'sample'} courses={previewCourses} slots={previewSlots} />
-              {previewCourses.length > 0 && (
-                <ul className="mt-4 flex flex-wrap gap-1.5">
-                  {previewCourses.map((c) => (
-                    <li key={c.id} style={hueVars(c.hue)} className="rounded-md bg-[var(--hl)] px-2 py-0.5 text-xs font-bold text-[var(--ink)]">
-                      {c.short || '…'}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </figure>
-            {live && image && (
-              <figure className="mt-4">
-                <img src={image} alt={t('yourScreenshot')} className="max-h-56 w-full rounded-xl border border-rule-strong object-cover object-top" />
-                <figcaption className="mt-1 text-xs text-ink-soft">{t('yourScreenshot')}</figcaption>
-              </figure>
-            )}
-          </aside>
-        </main>
-      </div>
+          {step === 1 && (
+            <p className="mt-5 text-center text-sm text-ink-soft">
+              {t('haveSyncQuestion')}{' '}
+              <button type="button" onClick={() => openSync()} className="font-medium text-ink underline underline-offset-4 hover:text-pen">
+                {t('connectWithCode')}
+              </button>
+            </p>
+          )}
+        </div>
+      </main>
     </div>
   )
 }
 
-function AboutStep({
-  profile,
-  onChange,
-  onNext,
-  onSync,
-}: {
-  profile: Profile
-  onChange: (p: Profile) => void
-  onNext: () => void
-  onSync: () => void
-}) {
+function AboutStep({ profile, onChange, onNext }: { profile: Profile; onChange: (p: Profile) => void; onNext: () => void }) {
   const { t } = useT()
   const set = (k: keyof Profile) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...profile, [k]: e.target.value })
   const submit = (e: FormEvent) => {
@@ -308,37 +262,30 @@ function AboutStep({
   return (
     <form onSubmit={submit} className="space-y-5">
       <div>
-        <Label htmlFor="w-name">
-          {t('yourName')} <span className="font-normal text-ink-faint">{t('optional')}</span>
-        </Label>
-        <input id="w-name" className="field" value={profile.name} onChange={set('name')} autoComplete="given-name" />
+        <Label htmlFor="w-program">{t('program')}</Label>
+        <input id="w-program" className="field" value={profile.program} onChange={set('program')} placeholder={t('programPlaceholder')} required autoFocus />
       </div>
       <div>
         <Label htmlFor="w-uni">{t('university')}</Label>
         <input id="w-uni" className="field" value={profile.university} onChange={set('university')} placeholder={t('universityPlaceholder')} />
       </div>
-      <div>
-        <Label htmlFor="w-program">{t('program')}</Label>
-        <input id="w-program" className="field" value={profile.program} onChange={set('program')} placeholder={t('programPlaceholder')} required />
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="w-name">
+            {t('yourName')} <span className="font-normal text-ink-faint">{t('optional')}</span>
+          </Label>
+          <input id="w-name" className="field" value={profile.name} onChange={set('name')} autoComplete="given-name" />
+        </div>
+        <div>
+          <Label htmlFor="w-start">
+            {t('semesterStart')} <span className="font-normal text-ink-faint">{t('optional')}</span>
+          </Label>
+          <input id="w-start" type="date" className="field" value={profile.semesterStart} onChange={set('semesterStart')} />
+        </div>
       </div>
-      <div>
-        <Label htmlFor="w-start">
-          {t('semesterStart')} <span className="font-normal text-ink-faint">{t('optional')}</span>
-        </Label>
-        <input id="w-start" type="date" className="field w-auto" value={profile.semesterStart} onChange={set('semesterStart')} />
-        <p className="mt-1 text-xs text-ink-soft">{t('semesterStartHint')}</p>
-      </div>
-      <div className="pt-3">
-        <button className="btn btn-primary btn-lg w-full justify-center sm:w-auto">
-          {t('next')} <ChevronRight size={18} />
-        </button>
-      </div>
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-rule pt-5 text-sm text-ink-soft">
-        {t('haveSyncQuestion')}
-        <button type="button" onClick={onSync} className="inline-flex items-center gap-1.5 font-semibold text-pen hover:underline">
-          <QrCode size={15} /> {t('connectWithCode')}
-        </button>
-      </p>
+      <button className="btn btn-primary btn-lg mt-2 w-full justify-center">
+        {t('next')} <ChevronRight size={18} />
+      </button>
     </form>
   )
 }
@@ -385,7 +332,6 @@ function TimetableStep({
 
   return (
     <div className="space-y-5">
-      <h2 className="text-lg font-bold">{t('uploadTitle')}</h2>
 
       {image ? (
         <div>
@@ -415,13 +361,12 @@ function TimetableStep({
             take(e.dataTransfer.files[0])
           }}
           className={clsx(
-            'quadretti flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors',
-            over ? 'border-pen' : 'border-rule-strong hover:border-pen',
+            'flex w-full flex-col items-center gap-2 rounded-xl border border-dashed bg-paper px-6 py-12 text-center transition-colors',
+            over ? 'border-pen bg-pen-soft' : 'border-rule-strong hover:border-ink-faint',
           )}
-          style={{ '--hour': '56px' } as React.CSSProperties}
         >
-          <ImageUp size={28} className="text-pen" />
-          <span className="font-semibold">{t('dropHere')}</span>
+          <ImageUp size={26} className="text-ink-soft" />
+          <span className="font-medium">{t('dropHere')}</span>
           <span className="text-sm text-ink-soft">{t('uploadHint')}</span>
         </button>
       )}
@@ -436,11 +381,11 @@ function TimetableStep({
       <div className="flex items-center gap-3 text-sm text-ink-faint">
         <span className="h-px flex-1 bg-rule" /> {t('orWord')} <span className="h-px flex-1 bg-rule" />
       </div>
-      <div className="flex flex-col items-start gap-2">
-        <button className="btn btn-quiet border border-rule-strong text-pen" onClick={onTemplate}>
+      <div className="flex flex-col gap-2">
+        <button className="btn btn-outline w-full justify-center" onClick={onTemplate}>
           {t('useTemplate')}
         </button>
-        <button className="btn btn-quiet -ml-3" onClick={onEmpty}>
+        <button className="btn btn-quiet w-full justify-center" onClick={onEmpty}>
           {t('startEmpty')}
         </button>
       </div>
@@ -483,21 +428,24 @@ function CheckStep({
 
   return (
     <div className="grid gap-8">
+      {slots.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h2 className="font-semibold">{t('preview')}</h2>
+            <span className="text-sm text-ink-soft">{t('foundSummary', { courses: courses.length, slots: slots.length })}</span>
+          </div>
+          <MiniWeek courses={courses} slots={slots} />
+        </section>
+      )}
+      {note && <p className="rounded-lg bg-pen-soft px-3 py-2 text-sm">{t('aiNote', { note })}</p>}
       {image && (
-        <figure className="lg:hidden">
-          <img src={image} alt={t('yourScreenshot')} className="max-h-64 w-full rounded-xl border border-rule-strong object-cover object-top" />
-          <figcaption className="mt-1 text-xs text-ink-soft">{t('yourScreenshot')}</figcaption>
-        </figure>
+        <details className="rounded-xl border border-rule px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium">{t('yourScreenshot')}</summary>
+          <img src={image} alt={t('yourScreenshot')} className="mt-3 w-full rounded-lg border border-rule" />
+        </details>
       )}
 
       <div className="min-w-0 space-y-8">
-        <div>
-          <p className="text-ink-soft">{t('checkIntro')}</p>
-          {(courses.length > 0 || slots.length > 0) && (
-            <p className="mt-1 text-sm font-semibold">{t('foundSummary', { courses: courses.length, slots: slots.length })}</p>
-          )}
-          {note && <p className="mt-2 rounded-lg bg-pen-soft px-3 py-2 text-sm">{t('aiNote', { note })}</p>}
-        </div>
 
         <section>
           <h2 className="mb-2 text-lg font-bold">{t('courses')}</h2>

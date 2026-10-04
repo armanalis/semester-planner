@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 export function StatTile({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
     <div className="min-w-0" title={hint}>
-      <p className="text-3xl leading-tight font-bold tracking-tight tabular-nums">{value}</p>
+      <p className="text-3xl leading-tight font-semibold tracking-tight tabular-nums">{value}</p>
       <p className="mt-0.5 text-sm text-ink-soft">{label}</p>
     </div>
   )

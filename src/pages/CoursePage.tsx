@@ -83,8 +83,9 @@ function CourseHeader({ course, onEdit }: { course: Course; onEdit: () => void }
   return (
     <header className="max-w-4xl">
       <div className="flex flex-col-reverse items-start gap-2 sm:flex-row sm:gap-4">
-        <h1 className="flex-1 text-3xl leading-[1.15] font-bold tracking-tight text-balance sm:text-[2.5rem]">
-          <span className="marker">{course.name}</span>
+        <h1 className="flex flex-1 items-start gap-3 text-3xl leading-[1.15] font-semibold tracking-tight sm:text-[2.4rem]">
+          <span className="course-block mt-2.5 size-4 shrink-0 rounded-full sm:mt-3.5" aria-hidden />
+          {course.name}
         </h1>
         <button className="btn btn-quiet shrink-0 max-sm:-ml-3 sm:mt-2" onClick={onEdit}>
           <Pencil size={15} /> {t('editDetails')}
@@ -142,7 +143,7 @@ function Notes({ course }: { course: Course }) {
             onChange={(e) => updateCourse(course.id, { notes: e.target.value })}
             placeholder={t('notesPlaceholder')}
             aria-label={t('notesFor', { name: course.name })}
-            className="field-sizing-content block min-h-56 w-full resize-y rounded-lg border border-rule bg-sheet bg-[linear-gradient(transparent_27px,var(--color-rule)_27px)] bg-[length:100%_28px] bg-local px-3 py-[2px] text-[15px] leading-[28px] text-ink placeholder:text-ink-faint focus-visible:outline-2 focus-visible:outline-pen"
+            className="field field-sizing-content block min-h-56 resize-y px-4 py-3 text-[15px] leading-relaxed"
           />
           <p className="mt-2 text-xs text-ink-soft">
             {t('notesHint')} {t('savedAsYouType')}.
@@ -150,7 +151,7 @@ function Notes({ course }: { course: Course }) {
         </>
       ) : (
         <div
-          className="min-h-24 cursor-text rounded-lg border border-rule bg-sheet px-4 py-3"
+          className="min-h-24 cursor-text rounded-[10px] border border-rule-strong bg-raised px-4 py-3"
           onDoubleClick={() => setMode('write')}
           title={t('edit')}
         >

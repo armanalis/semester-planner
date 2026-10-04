@@ -32,7 +32,7 @@ export default function Stats() {
 
   return (
     <div className="mx-auto max-w-[76rem] px-4 pt-8 pb-20 sm:px-8">
-      <h1 className="text-3xl font-bold tracking-tight">{t('statistics')}</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">{t('statistics')}</h1>
 
       <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
         <StatTile label={t('statFocusTotal')} value={hours(totalFocus)} />

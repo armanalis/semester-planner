@@ -27,8 +27,9 @@ export function SlotDialog({ slotId, week, onClose }: { slotId: string | null; w
       wide
       title={
         course && (
-          <span style={hueVars(course.hue)}>
-            <span className="marker">{course.name}</span>
+          <span style={hueVars(course.hue)} className="flex items-start gap-2.5">
+            <span className="course-block mt-1.5 size-3 shrink-0 rounded-full" aria-hidden />
+            {course.name}
           </span>
         )
       }
