@@ -31,3 +31,8 @@ dist-ssr
 .env*.local
 .vercel
 .env*
+
+# agent skills installed by the Upstash integration
+.agents/
+.claude/
+skills-lock.json
