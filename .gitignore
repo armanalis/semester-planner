@@ -29,3 +29,5 @@ dist-ssr
 # local sync storage (dev server)
 .data
 .env*.local
+.vercel
+.env*
