@@ -109,7 +109,11 @@ export default function Welcome() {
       })
       const body = (await res.json().catch(() => ({}))) as Partial<ParsedTimetable> & { error?: string }
       if (!res.ok) {
-        setParseError(body.error === 'missing_key' ? t('parseMissingKey') : t('parseFailed', { error: body.error ?? res.status }))
+        setParseError(
+          body.error === 'missing_key' || body.error === 'no_credits'
+            ? t('parseUnavailable')
+            : t('parseFailed', { error: body.error ?? res.status }),
+        )
         return
       }
       const draftCourses: DraftCourse[] = (body.courses ?? []).map((c, i) => ({

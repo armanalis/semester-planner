@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
 } from 'react'
 import { hueVars } from '../lib/hues'
 import { useT } from '../lib/i18n'
@@ -137,7 +138,7 @@ export function WeekCalendar({
 
   // drag on empty space → new study block
   const onDown = (day: number) => (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || e.target !== e.currentTarget) return
+    if (e.button !== 0 || e.target !== e.currentTarget || e.pointerType === 'touch') return
     const m = clampDay(Math.floor(minuteIn(e.currentTarget, e.clientY) / 30) * 30)
     e.currentTarget.setPointerCapture(e.pointerId)
     setDrag({ day, anchor: m, start: m, end: Math.min(DAY_END, m + 30), moved: false })
@@ -156,7 +157,32 @@ export function WeekCalendar({
     setDrag(null)
   }
 
-  // drag a study block → move it (any day, any time) or resize it from the bottom edge
+  /** Where a dragged block lands for a pointer at (x, y). */
+  const dragTarget = (block: StudyBlock, mode: 'move' | 'resize', offset: number, x: number, y: number): Moving => {
+    if (mode === 'resize') {
+      const end = Math.min(DAY_END, Math.max(block.start + 30, snap(minuteIn(colRefs.current[block.day]!, y))))
+      return { id: block.id, day: block.day, start: block.start, end }
+    }
+    const length = block.end - block.start
+    let day = block.day
+    for (const d of days) {
+      const r = colRefs.current[d]?.getBoundingClientRect()
+      if (r && x >= r.left && x < r.right) day = d
+    }
+    const start = Math.min(DAY_END - length, Math.max(DAY_START, snap(minuteIn(colRefs.current[day]!, y) - offset)))
+    return { id: block.id, day, start, end: start + length }
+  }
+
+  const finishDrag = (block: StudyBlock, target: Moving) => {
+    // the click that follows a drag shouldn't open the block
+    suppressClick.current = true
+    setTimeout(() => (suppressClick.current = false), 400)
+    if (target.day !== block.day || target.start !== block.start || target.end !== block.end)
+      onMoveBlock(block.id, target.day, target.start, target.end)
+    setMoving(null)
+  }
+
+  // mouse: press and move a study block, or its bottom edge to resize
   const beginBlockDrag = (e: ReactPointerEvent, block: StudyBlock, mode: 'move' | 'resize') => {
     if (e.button !== 0 || e.pointerType === 'touch') return
     if ((e.target as HTMLElement).closest('[role="checkbox"]')) return
@@ -165,7 +191,6 @@ export function WeekCalendar({
     const col = colRefs.current[block.day]
     if (!col) return
     const offset = minuteIn(col, e.clientY) - block.start
-    const length = block.end - block.start
     const startX = e.clientX
     const startY = e.clientY
     let active = false
@@ -174,33 +199,98 @@ export function WeekCalendar({
     const move = (ev: PointerEvent) => {
       if (!active && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return
       active = true
-      if (mode === 'move') {
-        let day = block.day
-        for (const d of days) {
-          const r = colRefs.current[d]?.getBoundingClientRect()
-          if (r && ev.clientX >= r.left && ev.clientX < r.right) day = d
-        }
-        const colEl = colRefs.current[day]!
-        const start = Math.min(DAY_END - length, Math.max(DAY_START, snap(minuteIn(colEl, ev.clientY) - offset)))
-        target = { id: block.id, day, start, end: start + length }
-      } else {
-        const end = Math.min(DAY_END, Math.max(block.start + 30, snap(minuteIn(col, ev.clientY))))
-        target = { id: block.id, day: block.day, start: block.start, end }
-      }
+      target = dragTarget(block, mode, offset, ev.clientX, ev.clientY)
       setMoving(target)
     }
     const up = () => {
       window.removeEventListener('pointermove', move)
-      if (active) {
-        suppressClick.current = true
-        setTimeout(() => (suppressClick.current = false), 0)
-        if (target.day !== block.day || target.start !== block.start || target.end !== block.end)
-          onMoveBlock(block.id, target.day, target.start, target.end)
-      }
-      setMoving(null)
+      if (active) finishDrag(block, target)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up, { once: true })
+  }
+
+  /**
+   * Touch: hold still for a moment to pick something up, then drag. A quick swipe still scrolls,
+   * and a quick tap stays a tap.
+   */
+  const holdThenDrag = (
+    e: ReactTouchEvent,
+    h: { start: () => void; move: (x: number, y: number) => void; end: () => void; tap?: () => void },
+  ) => {
+    if (e.touches.length !== 1) return
+    const sx = e.touches[0].clientX
+    const sy = e.touches[0].clientY
+    let last = { x: sx, y: sy }
+    let active = false
+    const timer = setTimeout(() => {
+      active = true
+      navigator.vibrate?.(12)
+      h.start()
+      h.move(last.x, last.y)
+    }, 300)
+    const stop = () => {
+      clearTimeout(timer)
+      window.removeEventListener('touchmove', move)
+      window.removeEventListener('touchend', end)
+      window.removeEventListener('touchcancel', end)
+    }
+    const move = (ev: TouchEvent) => {
+      last = { x: ev.touches[0].clientX, y: ev.touches[0].clientY }
+      if (active) {
+        ev.preventDefault() // keep the page still while dragging
+        h.move(last.x, last.y)
+      } else if (Math.hypot(last.x - sx, last.y - sy) > 8) stop() // it's a scroll
+    }
+    const end = (ev: TouchEvent) => {
+      const wasActive = active
+      stop()
+      if (wasActive) {
+        ev.preventDefault()
+        h.end()
+      } else if (ev.type === 'touchend') h.tap?.()
+    }
+    window.addEventListener('touchmove', move, { passive: false })
+    window.addEventListener('touchend', end)
+    window.addEventListener('touchcancel', end)
+  }
+
+  const touchBlock = (e: ReactTouchEvent, block: StudyBlock, mode: 'move' | 'resize') => {
+    if ((e.target as HTMLElement).closest('[role="checkbox"]')) return
+    e.stopPropagation()
+    const col = colRefs.current[block.day]
+    if (!col) return
+    const offset = minuteIn(col, e.touches[0].clientY) - block.start
+    let target: Moving = { id: block.id, day: block.day, start: block.start, end: block.end }
+    holdThenDrag(e, {
+      start: () => setMoving(target),
+      move: (x, y) => {
+        target = dragTarget(block, mode, offset, x, y)
+        setMoving(target)
+      },
+      end: () => finishDrag(block, target),
+    })
+  }
+
+  // touch on empty space: tap → 1-hour block; hold and drag → pick the time range
+  const touchCreate = (day: number) => (e: ReactTouchEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget || e.touches.length !== 1) return
+    const col = e.currentTarget
+    const anchor = clampDay(Math.floor(minuteIn(col, e.touches[0].clientY) / 30) * 30)
+    let range = { start: anchor, end: Math.min(DAY_END, anchor + 30) }
+    holdThenDrag(e, {
+      start: () => setDrag({ day, anchor, ...range, moved: true }),
+      move: (_x, y) => {
+        const m = clampDay(snap(minuteIn(col, y)))
+        range = { start: Math.min(anchor, m), end: Math.max(anchor + 30, m) }
+        setDrag({ day, anchor, ...range, moved: true })
+      },
+      end: () => {
+        setDrag(null)
+        onCreate(day, range.start, range.end)
+      },
+      tap: () => onCreate(day, anchor, Math.min(DAY_END, anchor + 60)),
+    })
   }
 
   const movingBlock = moving && blocks.find((b) => b.id === moving.id)
@@ -286,8 +376,10 @@ export function WeekCalendar({
                 onPointerMove={onMove}
                 onPointerUp={onUp}
                 onPointerCancel={() => setDrag(null)}
+                onTouchStart={touchCreate(d)}
+                onContextMenu={(e) => e.preventDefault()}
                 className={clsx(
-                  'hour-grid relative cursor-cell touch-pan-y border-l border-rule-strong select-none',
+                  'hour-grid relative cursor-cell border-l border-rule-strong select-none [-webkit-touch-callout:none]',
                   d >= 5 && 'bg-paper',
                 )}
                 style={{ height: (END_H - START_H) * HOUR }}
@@ -331,6 +423,7 @@ export function WeekCalendar({
                       }}
                       onToggle={() => onToggleDone(it.block)}
                       onDragStart={(e, mode) => beginBlockDrag(e, it.block, mode)}
+                      onTouchDrag={(e, mode) => touchBlock(e, it.block, mode)}
                     />
                   )
                 })}
@@ -427,6 +520,7 @@ function StudyBlockView({
   onOpen,
   onToggle,
   onDragStart,
+  onTouchDrag,
 }: {
   block: StudyBlock
   course: Course
@@ -436,6 +530,7 @@ function StudyBlockView({
   onOpen: () => void
   onToggle: () => void
   onDragStart: (e: ReactPointerEvent, mode: 'move' | 'resize') => void
+  onTouchDrag: (e: ReactTouchEvent, mode: 'move' | 'resize') => void
 }) {
   const { t } = useT()
   const compact = block.end - block.start <= 45
@@ -443,6 +538,7 @@ function StudyBlockView({
     <div
       data-done={done}
       onPointerDown={(e) => onDragStart(e, 'move')}
+      onTouchStart={(e) => onTouchDrag(e, 'move')}
       style={{ ...style, ...hueVars(course.hue) }}
       className={clsx(
         'study-block group absolute z-[1] flex cursor-grab gap-1.5 overflow-hidden px-1.5 active:cursor-grabbing',
@@ -475,7 +571,8 @@ function StudyBlockView({
       {/* bottom edge: drag to make the block longer or shorter */}
       <div
         onPointerDown={(e) => onDragStart(e, 'resize')}
-        className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize opacity-0 transition-opacity group-hover:opacity-100"
+        onTouchStart={(e) => onTouchDrag(e, 'resize')}
+        className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:h-3.5 pointer-coarse:opacity-100"
         aria-hidden
       >
         <div className="mx-auto mt-0.5 h-0.5 w-6 rounded-full bg-[var(--ink)]" />
