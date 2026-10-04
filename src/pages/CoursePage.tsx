@@ -39,7 +39,7 @@ export default function CoursePage() {
   }
 
   return (
-    <div style={hueVars(course.hue)} className="max-w-[78rem] px-4 pt-8 pb-20 sm:px-8">
+    <div style={hueVars(course.hue)} className="mx-auto max-w-[80rem] px-4 pt-8 pb-20 sm:px-8">
       <CourseHeader course={course} onEdit={() => setEditing(true)} />
 
       <div className="mt-8 grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">

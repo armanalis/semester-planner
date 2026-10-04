@@ -50,7 +50,7 @@ export default function Review() {
   const sunday = weekDates(monday)[6]
 
   return (
-    <div className="max-w-[64rem] px-4 pt-8 pb-20 sm:px-8">
+    <div className="mx-auto max-w-[72rem] px-4 pt-8 pb-20 sm:px-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{t('weeklyReview')}</h1>

@@ -31,7 +31,7 @@ export default function Stats() {
   const chip = (courseId: string) => (courseById[courseId] ? swatch(courseById[courseId].hue) : undefined)
 
   return (
-    <div className="max-w-[72rem] px-4 pt-8 pb-20 sm:px-8">
+    <div className="mx-auto max-w-[76rem] px-4 pt-8 pb-20 sm:px-8">
       <h1 className="text-3xl font-bold tracking-tight">{t('statistics')}</h1>
 
       <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">

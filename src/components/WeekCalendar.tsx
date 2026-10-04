@@ -33,10 +33,10 @@ type Item =
   | { kind: 'block'; start: number; end: number; block: StudyBlock }
 
 /** Side-by-side columns for overlapping items, like the Polito timetable. */
-function layoutDay(items: Item[]) {
+export function layoutDay<T extends { start: number; end: number }>(items: T[]) {
   const sorted = [...items].sort((a, b) => a.start - b.start || b.end - a.end)
-  const out: (Item & { col: number; cols: number })[] = []
-  let cluster: (Item & { col: number })[] = []
+  const out: (T & { col: number; cols: number })[] = []
+  let cluster: (T & { col: number })[] = []
   let colEnds: number[] = []
   let clusterEnd = -Infinity
   const flush = () => {
@@ -122,7 +122,7 @@ export function WeekCalendar({
   const byDay = useMemo(
     () =>
       days.map((d) =>
-        layoutDay([
+        layoutDay<Item>([
           ...slots.filter((s) => s.day === d).map((slot) => ({ kind: 'slot' as const, start: slot.start, end: slot.end, slot })),
           ...blocks.filter((b) => b.day === d).map((block) => ({ kind: 'block' as const, start: block.start, end: block.end, block })),
         ]),

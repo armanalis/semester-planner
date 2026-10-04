@@ -1,12 +1,14 @@
 import clsx from 'clsx'
-import { ImageUp, LoaderCircle, Plus, RefreshCw, Smartphone, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, ImageUp, LoaderCircle, Plus, QrCode, RefreshCw, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { PrefSwitches } from '../components/Layout'
+import { Logo } from '../components/Logo'
+import { MiniWeek } from '../components/MiniWeek'
 import { kindOptions } from '../components/SlotDialog'
 import { Label } from '../components/ui'
 import { SEED_COURSES, SEED_SLOTS, TEMPLATE_PROFILE } from '../data/seed'
-import { HUES, swatch } from '../lib/hues'
+import { HUES, hueVars, swatch } from '../lib/hues'
 import { useT } from '../lib/i18n'
 import { uid } from '../lib/id'
 import { useUI } from '../lib/ui'
@@ -166,83 +168,122 @@ export default function Welcome() {
   }
 
   const steps = [t('stepAbout'), t('stepTimetable'), t('stepCheck')]
+  const live = step === 3
+  const previewCourses = live ? courses : SEED_COURSES
+  const previewSlots = live ? slots : SEED_SLOTS
 
   return (
-    <div className="min-h-dvh px-4 py-6 sm:px-8">
-      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <img src="/favicon.svg" alt="" className="size-8 rounded-lg ring-1 ring-rule-strong" />
-          <span className="font-bold">{t('appName')}</span>
-        </div>
-        <PrefSwitches />
-      </header>
+    <div className="min-h-dvh px-5 py-6 sm:px-10">
+      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-7xl flex-col">
+        <header className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Logo />
+            <span className="font-bold">{t('appName')}</span>
+          </div>
+          <PrefSwitches />
+        </header>
 
-      <main className={clsx('mx-auto mt-10', step === 3 ? 'max-w-5xl' : 'max-w-xl')}>
-        <h1 className="text-4xl leading-tight font-bold tracking-tight text-balance" style={{ '--hl': 'var(--color-mark)' } as React.CSSProperties}>
-          <span className="marker">{t('welcomeTitle')}</span>
-        </h1>
-        <p className="mt-2 text-ink-soft">{t('welcomeIntro')}</p>
+        <main
+          className={clsx(
+            'grid flex-1 gap-x-16 gap-y-10 py-10 lg:py-14',
+            live ? 'items-start lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]' : 'items-center lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]',
+          )}
+        >
+          <section className={clsx('min-w-0', !live && 'max-w-xl')}>
+            <h1
+              className="text-4xl leading-[1.1] font-bold tracking-tight text-balance sm:text-[2.9rem]"
+              style={{ '--hl': 'var(--color-mark)', '--ink': 'var(--color-mark-ink)' } as React.CSSProperties}
+            >
+              <span className="marker">{t('welcomeTitle')}</span>
+            </h1>
+            <p className="mt-3 text-lg text-ink-soft">{t('welcomeIntro')}</p>
 
-        <ol className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-          {steps.map((label, i) => (
-            <li key={label} className={clsx('flex items-center gap-2', step === i + 1 ? 'font-bold text-ink' : 'text-ink-faint')}>
-              <span
-                className={clsx(
-                  'grid size-6 place-items-center rounded-full text-xs font-bold',
-                  step > i + 1 ? 'bg-pen text-on-pen' : step === i + 1 ? 'border-2 border-pen text-pen' : 'border border-rule-strong',
-                )}
-              >
-                {i + 1}
-              </span>
-              {label}
-            </li>
-          ))}
-        </ol>
+            <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" aria-label={t('welcomeTitle')}>
+              {steps.map((label, i) => {
+                const n = i + 1
+                return (
+                  <li key={label} className="flex items-center gap-3" aria-current={step === n ? 'step' : undefined}>
+                    <span className={clsx('flex items-center gap-2', step === n ? 'font-bold text-ink' : step > n ? 'text-ink-soft' : 'text-ink-faint')}>
+                      <span
+                        className={clsx(
+                          'grid size-7 place-items-center rounded-full text-xs font-bold transition-colors',
+                          step > n ? 'bg-pen text-on-pen' : step === n ? 'bg-pen-soft text-pen ring-2 ring-pen' : 'ring-1 ring-rule-strong',
+                        )}
+                      >
+                        {step > n ? <Check size={14} strokeWidth={3} /> : n}
+                      </span>
+                      {label}
+                    </span>
+                    {n < steps.length && <span className={clsx('hidden h-px w-8 sm:block sm:w-12', step > n ? 'bg-pen' : 'bg-rule-strong')} aria-hidden />}
+                  </li>
+                )
+              })}
+            </ol>
 
-        <div className="mt-8">
-          {step === 1 && (
-            <AboutStep
-              profile={profile}
-              onChange={setProfile}
-              onNext={() => setStep(2)}
-              onSync={() => openSync()}
-            />
-          )}
-          {step === 2 && (
-            <TimetableStep
-              image={image}
-              setImage={(img) => {
-                setImage(img)
-                setParseError('')
-              }}
-              parsing={parsing}
-              error={parseError}
-              onRead={read}
-              onTemplate={useTemplate}
-              onEmpty={() => {
-                setCourses([])
-                setSlots([])
-                setNote('')
-                setStep(3)
-              }}
-              onBack={() => setStep(1)}
-            />
-          )}
-          {step === 3 && (
-            <CheckStep
-              image={image}
-              note={note}
-              courses={courses}
-              slots={slots}
-              setCourses={setCourses}
-              setSlots={setSlots}
-              error={finishError}
-              onBack={() => setStep(2)}
-              onFinish={finish}
-            />
-          )}
-        </div>
-      </main>
+            <div className="mt-9">
+              {step === 1 && <AboutStep profile={profile} onChange={setProfile} onNext={() => setStep(2)} onSync={() => openSync()} />}
+              {step === 2 && (
+                <TimetableStep
+                  image={image}
+                  setImage={(img) => {
+                    setImage(img)
+                    setParseError('')
+                  }}
+                  parsing={parsing}
+                  error={parseError}
+                  onRead={read}
+                  onTemplate={useTemplate}
+                  onEmpty={() => {
+                    setCourses([])
+                    setSlots([])
+                    setNote('')
+                    setStep(3)
+                  }}
+                  onBack={() => setStep(1)}
+                />
+              )}
+              {step === 3 && (
+                <CheckStep
+                  image={image}
+                  note={note}
+                  courses={courses}
+                  slots={slots}
+                  setCourses={setCourses}
+                  setSlots={setSlots}
+                  error={finishError}
+                  onBack={() => setStep(2)}
+                  onFinish={finish}
+                />
+              )}
+            </div>
+          </section>
+
+          <aside className="hidden lg:sticky lg:top-8 lg:block">
+            <figure className="rounded-2xl border border-rule-strong bg-sheet p-5 shadow-[0_40px_90px_-50px_rgb(10_15_30/0.6)]">
+              <figcaption className="mb-4 flex items-baseline justify-between gap-3">
+                <span className="font-semibold">{live ? t('previewLive') : t('previewSample')}</span>
+                {live && <span className="text-xs text-ink-soft">{t('foundSummary', { courses: courses.length, slots: slots.length })}</span>}
+              </figcaption>
+              <MiniWeek key={live ? 'live' : 'sample'} courses={previewCourses} slots={previewSlots} />
+              {previewCourses.length > 0 && (
+                <ul className="mt-4 flex flex-wrap gap-1.5">
+                  {previewCourses.map((c) => (
+                    <li key={c.id} style={hueVars(c.hue)} className="rounded-md bg-[var(--hl)] px-2 py-0.5 text-xs font-bold text-[var(--ink)]">
+                      {c.short || '…'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </figure>
+            {live && image && (
+              <figure className="mt-4">
+                <img src={image} alt={t('yourScreenshot')} className="max-h-56 w-full rounded-xl border border-rule-strong object-cover object-top" />
+                <figcaption className="mt-1 text-xs text-ink-soft">{t('yourScreenshot')}</figcaption>
+              </figure>
+            )}
+          </aside>
+        </main>
+      </div>
     </div>
   )
 }
@@ -265,7 +306,7 @@ function AboutStep({
     onNext()
   }
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-5">
       <div>
         <Label htmlFor="w-name">
           {t('yourName')} <span className="font-normal text-ink-faint">{t('optional')}</span>
@@ -274,7 +315,7 @@ function AboutStep({
       </div>
       <div>
         <Label htmlFor="w-uni">{t('university')}</Label>
-        <input id="w-uni" className="field" value={profile.university} onChange={set('university')} placeholder="Politecnico di Torino" />
+        <input id="w-uni" className="field" value={profile.university} onChange={set('university')} placeholder={t('universityPlaceholder')} />
       </div>
       <div>
         <Label htmlFor="w-program">{t('program')}</Label>
@@ -287,12 +328,17 @@ function AboutStep({
         <input id="w-start" type="date" className="field w-auto" value={profile.semesterStart} onChange={set('semesterStart')} />
         <p className="mt-1 text-xs text-ink-soft">{t('semesterStartHint')}</p>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        <button type="button" onClick={onSync} className="inline-flex items-center gap-1.5 text-sm font-semibold text-pen hover:underline">
-          <Smartphone size={15} /> {t('haveSyncCode')}
+      <div className="pt-3">
+        <button className="btn btn-primary btn-lg w-full justify-center sm:w-auto">
+          {t('next')} <ChevronRight size={18} />
         </button>
-        <button className="btn btn-primary">{t('next')}</button>
       </div>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-rule pt-5 text-sm text-ink-soft">
+        {t('haveSyncQuestion')}
+        <button type="button" onClick={onSync} className="inline-flex items-center gap-1.5 font-semibold text-pen hover:underline">
+          <QrCode size={15} /> {t('connectWithCode')}
+        </button>
+      </p>
     </form>
   )
 }
@@ -345,7 +391,7 @@ function TimetableStep({
         <div>
           <img src={image} alt={t('yourScreenshot')} className="max-h-80 w-full rounded-xl border border-rule-strong object-contain" />
           <div className="mt-3 flex flex-wrap gap-2">
-            <button className="btn btn-primary" onClick={onRead} disabled={parsing}>
+            <button className="btn btn-primary btn-lg" onClick={onRead} disabled={parsing}>
               {parsing ? <LoaderCircle size={16} className="animate-spin" /> : <ImageUp size={16} />} {t('readTimetable')}
             </button>
             <button className="btn btn-quiet" onClick={() => inputRef.current?.click()} disabled={parsing}>
@@ -375,7 +421,7 @@ function TimetableStep({
           style={{ '--hour': '56px' } as React.CSSProperties}
         >
           <ImageUp size={28} className="text-pen" />
-          <span className="font-semibold">{t('uploadTitle')}</span>
+          <span className="font-semibold">{t('dropHere')}</span>
           <span className="text-sm text-ink-soft">{t('uploadHint')}</span>
         </button>
       )}
@@ -391,7 +437,7 @@ function TimetableStep({
         <span className="h-px flex-1 bg-rule" /> {t('orWord')} <span className="h-px flex-1 bg-rule" />
       </div>
       <div className="flex flex-col items-start gap-2">
-        <button className="btn btn-quiet -ml-3 text-pen" onClick={onTemplate}>
+        <button className="btn btn-quiet border border-rule-strong text-pen" onClick={onTemplate}>
           {t('useTemplate')}
         </button>
         <button className="btn btn-quiet -ml-3" onClick={onEmpty}>
@@ -436,10 +482,10 @@ function CheckStep({
   const nextHue = (h: HueKey) => (Object.keys(HUES) as HueKey[])[((Object.keys(HUES) as HueKey[]).indexOf(h) + 1) % 7]
 
   return (
-    <div className={clsx('grid gap-8', image && 'lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]')}>
+    <div className="grid gap-8">
       {image && (
-        <figure className="lg:sticky lg:top-6 lg:self-start">
-          <img src={image} alt={t('yourScreenshot')} className="w-full rounded-xl border border-rule-strong" />
+        <figure className="lg:hidden">
+          <img src={image} alt={t('yourScreenshot')} className="max-h-64 w-full rounded-xl border border-rule-strong object-cover object-top" />
           <figcaption className="mt-1 text-xs text-ink-soft">{t('yourScreenshot')}</figcaption>
         </figure>
       )}
@@ -543,8 +589,8 @@ function CheckStep({
           <button className="btn btn-quiet -ml-3" onClick={onBack}>
             {t('back')}
           </button>
-          <button className="btn btn-primary" onClick={onFinish}>
-            {t('finish')}
+          <button className="btn btn-primary btn-lg" onClick={onFinish}>
+            {t('finish')} <ChevronRight size={18} />
           </button>
         </div>
       </div>

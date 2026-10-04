@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { format } from 'date-fns'
-import { BarChart3, CalendarDays, ClipboardCheck, Download, HardDriveDownload, Monitor, Moon, Smartphone, Sun, Timer, Upload } from 'lucide-react'
+import { BarChart3, CalendarDays, ClipboardCheck, Download, HardDriveDownload, Monitor, MonitorSmartphone, Moon, Sun, Timer, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet } from 'react-router'
 import { hueVars } from '../lib/hues'
@@ -11,6 +11,7 @@ import { useUI } from '../lib/ui'
 import { isoDay } from '../lib/time'
 import { pickData, usePlanner, type PlannerData } from '../store'
 import type { Lang, Theme } from '../types'
+import { Logo } from './Logo'
 import { Dialog } from './ui'
 
 const SCHEME: Record<Theme, string> = { system: 'light dark', light: 'light', dark: 'dark' }
@@ -62,7 +63,7 @@ function Brand() {
   const program = usePlanner((s) => s.profile.program)
   return (
     <div className="flex items-center gap-2.5">
-      <img src="/favicon.svg" alt="" className="size-8 rounded-lg ring-1 ring-rule-strong" />
+      <Logo />
       <div className="leading-tight">
         <p className="font-bold">{t('appName')}</p>
         <p className="max-w-40 truncate text-xs text-ink-soft">{program || t('appSub')}</p>
@@ -92,8 +93,8 @@ export function PrefSwitches({ className }: { className?: string }) {
     )
 
   return (
-    <div className={clsx('flex items-center gap-2', className)}>
-      <div role="radiogroup" aria-label={t('theme')} className="flex rounded-lg border border-rule-strong p-0.5">
+    <div className={clsx('flex w-fit items-center rounded-lg border border-rule-strong bg-raised p-0.5', className)}>
+      <div role="radiogroup" aria-label={t('theme')} className="flex">
         {themes.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
@@ -108,7 +109,8 @@ export function PrefSwitches({ className }: { className?: string }) {
           </button>
         ))}
       </div>
-      <div role="radiogroup" aria-label={t('language')} className="flex rounded-lg border border-rule-strong p-0.5">
+      <span className="mx-1 h-4 w-px bg-rule-strong" aria-hidden />
+      <div role="radiogroup" aria-label={t('language')} className="flex">
         {langs.map((l) => (
           <button
             key={l.value}
@@ -201,7 +203,7 @@ function Sidebar({ onBackup }: { onBackup: () => void }) {
       <button onClick={onBackup} className="btn btn-quiet justify-start">
         <HardDriveDownload size={17} /> {t('backup')}
       </button>
-      <PrefSwitches className="mt-2 px-1" />
+      <PrefSwitches className="mt-2 ml-1" />
     </aside>
   )
 }
@@ -225,7 +227,7 @@ function SyncButton() {
   const openSync = useUI((s) => s.openSync)
   return (
     <button onClick={() => openSync()} className="btn btn-quiet justify-start">
-      <Smartphone size={17} /> {t('sync')}
+      <MonitorSmartphone size={17} /> {t('sync')}
       <span
         className={clsx(
           'ml-auto size-2 rounded-full',

@@ -6,13 +6,14 @@
   --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
 
   /* paper + ink */
-  --color-paper: light-dark(#fbfcfe, #121826);
-  --color-sheet: light-dark(#ffffff, #161d2e);
-  --color-rule: light-dark(#dfe6f2, #222b41);
-  --color-rule-strong: light-dark(#c9d5ea, #2f3a55);
+  --color-paper: light-dark(#fbfcfe, #0f141f);
+  --color-sheet: light-dark(#ffffff, #151b29);
+  --color-raised: light-dark(#ffffff, #1a2132);
+  --color-rule: light-dark(#dfe6f2, #232b3f);
+  --color-rule-strong: light-dark(#c9d5ea, #364260);
   --color-ink: light-dark(#1b2540, #e4e8f4);
   --color-ink-soft: light-dark(#4a5672, #a3adc6);
-  --color-ink-faint: light-dark(#8792ab, #6c7792);
+  --color-ink-faint: light-dark(#8792ab, #7a85a0);
   --color-pen: light-dark(#2440c4, #93a6ff);
   --color-pen-hover: light-dark(#1b33a6, #b4c1ff);
   --color-pen-soft: light-dark(#e8ecfc, #222b4b);
@@ -20,7 +21,7 @@
   --color-margin: light-dark(#e0484e, #ff6f75);
   --color-danger: light-dark(#b42323, #ff8f8f);
   --color-danger-soft: light-dark(#fdecec, #3a1f27);
-  --color-mark: light-dark(#fceb8f, #4a4217);
+  --color-mark: light-dark(#fceb8f, #5c5220);
   --color-mark-ink: light-dark(#7a6408, #f2de72);
 
   --text-2xs: 0.6875rem;
@@ -74,7 +75,8 @@
   /* a lecture drawn with a highlighter: uneven marker edges */
   .highlighter {
     background: var(--hl);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 10%, transparent);
+    box-shadow: inset 0 0 0 1px
+      light-dark(color-mix(in srgb, var(--ink) 10%, transparent), color-mix(in srgb, var(--ink) 22%, transparent));
     border-radius: 3px 9px 4px 10px / 8px 3px 9px 4px;
   }
 
@@ -104,14 +106,14 @@
     border-radius: 6px;
   }
 
-  /* highlighter stroke behind a headline, wraps line by line */
+  /* highlighter stroke behind a headline, wraps line by line.
+     Light paper: a full highlight. Dark paper: a bright underline swipe (a fill would turn muddy). */
   .marker {
-    background-image: linear-gradient(
-      transparent 0.2em,
-      var(--hl) 0.2em,
-      var(--hl) 0.95em,
-      transparent 0.95em
-    );
+    --m-fill: light-dark(var(--hl), transparent);
+    --m-line: light-dark(transparent, color-mix(in srgb, var(--ink) 85%, transparent));
+    background-image:
+      linear-gradient(transparent 0.22em, var(--m-fill) 0.22em, var(--m-fill) 0.98em, transparent 0.98em),
+      linear-gradient(transparent 0.93em, var(--m-line) 0.93em, var(--m-line) 1.08em, transparent 1.08em);
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
     padding: 0 0.18em;
@@ -210,12 +212,20 @@
 
   .field {
     width: 100%;
+    min-height: 2.5rem;
     border: 1px solid var(--color-rule-strong);
-    background: var(--color-sheet);
-    border-radius: 8px;
-    padding: 0.45rem 0.65rem;
-    font-size: 0.875rem;
+    background: var(--color-raised);
+    border-radius: 9px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.9rem;
     color: var(--color-ink);
+    transition: border-color 150ms;
+  }
+  .field:hover {
+    border-color: var(--color-ink-faint);
+  }
+  .field[type='date'] {
+    min-width: 10.5rem;
   }
   .field::placeholder {
     color: var(--color-ink-faint);
@@ -234,7 +244,23 @@
     padding: 0.42rem 0.8rem;
     font-size: 0.875rem;
     font-weight: 600;
-    transition: background-color 120ms;
+    transition:
+      background-color 150ms,
+      color 150ms,
+      transform 120ms;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+  .btn-lg {
+    min-height: 2.75rem;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
   }
   .btn-primary {
     background: var(--color-pen);
@@ -255,6 +281,16 @@
   }
   .btn-danger:hover {
     background: var(--color-danger-soft);
+  }
+}
+
+/* a highlighter stroke drawn left to right (welcome preview) */
+@keyframes sweep {
+  from {
+    clip-path: inset(0 100% 0 0 round 6px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 6px);
   }
 }
 
