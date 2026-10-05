@@ -48,6 +48,8 @@ interface FocusState {
 }
 
 const DEFAULTS: FocusSettings = { focus: 25, short: 5, long: 15, rounds: 4, autoStart: false, sound: true }
+/** longest each part can be set to (minutes) */
+export const MAX_MINUTES: Record<Phase, number> = { focus: 180, short: 60, long: 90 }
 const ms = (min: number) => Math.round(min * 60_000)
 
 export const timeLeft = (s: Pick<FocusState, 'status' | 'endsAt' | 'remaining'>, now = Date.now()) =>

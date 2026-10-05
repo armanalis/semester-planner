@@ -1,7 +1,7 @@
 import clsx from 'clsx'
-import { Minus, Pause, Play, RotateCcw, Settings2, SkipForward, Square, Timer } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useFocus, timeLeft, type Phase } from '../lib/focus'
+import { Minus, Pause, Play, Plus, RotateCcw, Settings2, SkipForward, Square, Timer } from 'lucide-react'
+import { useEffect, useRef, useState, type InputHTMLAttributes } from 'react'
+import { MAX_MINUTES, useFocus, timeLeft, type Phase } from '../lib/focus'
 import { hueVars } from '../lib/hues'
 import { useT } from '../lib/i18n'
 import { usePlanner } from '../store'
@@ -112,9 +112,7 @@ export function FocusWidget() {
           />
 
           <div className="my-4 text-center">
-            <p className="text-6xl leading-none font-bold tracking-tight tabular-nums" aria-live="off">
-              {mmss(left)}
-            </p>
+            <Clock left={left} />
             <div className="mx-auto mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-rule">
               <div
                 className="h-full rounded-full bg-[var(--ink,var(--color-pen))] transition-[width] duration-500"
@@ -199,6 +197,53 @@ export function FocusWidget() {
   )
 }
 
+/** The big time. While the timer waits, −/+ nudge the length by a minute and tapping it lets you type one. */
+function Clock({ left }: { left: number }) {
+  const { t } = useT()
+  const phase = useFocus((s) => s.phase)
+  const status = useFocus((s) => s.status)
+  const minutes = useFocus((s) => s.settings[s.phase])
+  const setSettings = useFocus((s) => s.setSettings)
+  const [editing, setEditing] = useState(false)
+  const max = MAX_MINUTES[phase]
+  const setMinutes = (v: number) => setSettings({ [phase]: Math.min(max, Math.max(1, Math.round(v))) })
+  const big = 'text-6xl leading-none font-bold tracking-tight tabular-nums'
+
+  if (status !== 'idle') {
+    return (
+      <p className={big} aria-live="off">
+        {mmss(left)}
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <button className="btn btn-quiet p-2" onClick={() => setMinutes(minutes - 1)} disabled={minutes <= 1} aria-label={t('removeMinute')}>
+        <Minus size={18} />
+      </button>
+      {editing ? (
+        <NumberInput
+          autoFocus
+          value={minutes}
+          max={max}
+          onSave={setMinutes}
+          onDone={() => setEditing(false)}
+          aria-label={t(`${phase}Minutes`)}
+          className={clsx(big, 'field w-[3.5ch] px-1 py-0 text-center placeholder:text-ink-faint')}
+        />
+      ) : (
+        <button className={clsx(big, 'rounded-lg px-1 hover:bg-pen-soft')} onClick={() => setEditing(true)} title={t('typeMinutes')}>
+          {mmss(left)}
+        </button>
+      )}
+      <button className="btn btn-quiet p-2" onClick={() => setMinutes(minutes + 1)} disabled={minutes >= max} aria-label={t('addMinute')}>
+        <Plus size={18} />
+      </button>
+    </div>
+  )
+}
+
 function TimerSettings({ onBack }: { onBack: () => void }) {
   const { t } = useT()
   const settings = useFocus((s) => s.settings)
@@ -208,16 +253,11 @@ function TimerSettings({ onBack }: { onBack: () => void }) {
   const num = (key: 'focus' | 'short' | 'long' | 'rounds', label: string, max: number) => (
     <label className="flex items-center justify-between gap-3 text-sm">
       <span className="text-ink-soft">{label}</span>
-      <input
-        type="number"
-        min={1}
-        max={max}
+      <NumberInput
         value={settings[key]}
-        onChange={(e) => {
-          const v = Math.round(Number(e.target.value))
-          if (v >= 1 && v <= max) setSettings({ [key]: v })
-        }}
-        className="field w-20 py-1 text-right tabular-nums"
+        max={max}
+        onSave={(v) => setSettings({ [key]: v })}
+        className="field w-20 py-1 text-right tabular-nums placeholder:text-ink-faint"
       />
     </label>
   )
@@ -236,9 +276,9 @@ function TimerSettings({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-2.5">
-      {num('focus', t('focusMinutes'), 180)}
-      {num('short', t('shortMinutes'), 60)}
-      {num('long', t('longMinutes'), 90)}
+      {num('focus', t('focusMinutes'), MAX_MINUTES.focus)}
+      {num('short', t('shortMinutes'), MAX_MINUTES.short)}
+      {num('long', t('longMinutes'), MAX_MINUTES.long)}
       {num('rounds', t('roundsLabel'), 12)}
       {check('autoStart', t('autoStart'))}
       {check('sound', t('soundOn'))}
@@ -249,5 +289,48 @@ function TimerSettings({ onBack }: { onBack: () => void }) {
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * A whole-number box. Tapping it empties it (the current number stays as a faint hint), so typing never
+ * mixes with the old digits. Enter or leaving the box saves, kept within 1…max; Esc keeps the old number.
+ */
+function NumberInput({
+  value,
+  max,
+  onSave,
+  onDone,
+  ...props
+}: {
+  value: number
+  max: number
+  onSave: (v: number) => void
+  onDone?: () => void
+} & Pick<InputHTMLAttributes<HTMLInputElement>, 'autoFocus' | 'aria-label' | 'className'>) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const cancelled = useRef(false)
+  return (
+    <input
+      {...props}
+      inputMode="numeric"
+      value={draft ?? value}
+      placeholder={String(value)}
+      onFocus={() => setDraft('')}
+      onChange={(e) => setDraft(e.target.value.replace(/\D/g, '').slice(0, 3))}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') {
+          cancelled.current = true
+          e.currentTarget.blur()
+        }
+      }}
+      onBlur={() => {
+        if (draft && !cancelled.current) onSave(Math.min(max, Math.max(1, Number(draft))))
+        cancelled.current = false
+        setDraft(null)
+        onDone?.()
+      }}
+    />
   )
 }
