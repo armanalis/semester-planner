@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import { addWeeks, differenceInCalendarDays, isSameMonth, isSameWeek, parseISO } from 'date-fns'
-import { BrainCircuit, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { BrainCircuit, CalendarPlus, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react'
+import { useMemo, useRef, useState, type DragEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { BlockDialog, type BlockDraft } from '../components/BlockDialog'
 import { SlotDialog } from '../components/SlotDialog'
@@ -9,6 +9,7 @@ import { useDueTopics } from '../components/TopicReview'
 import { Meter } from '../components/ui'
 import { WeekCalendar, type Deadline } from '../components/WeekCalendar'
 import { hueVars } from '../lib/hues'
+import { readInvite } from '../lib/ics'
 import { useT, type T } from '../lib/i18n'
 import { dayIndex, hm, isoDay, minutesNow, mondayOf, weekDates, weekKey } from '../lib/time'
 import { useUI } from '../lib/ui'
@@ -27,6 +28,9 @@ export default function Planner() {
   const [monday, setMonday] = useState(() => mondayOf(new Date()))
   const [draft, setDraft] = useState<BlockDraft | null>(null)
   const [slotId, setSlotId] = useState<string | null>(null)
+  const [inviteError, setInviteError] = useState('')
+  const [dropping, setDropping] = useState(false)
+  const inviteRef = useRef<HTMLInputElement>(null)
 
   const week = weekKey(monday)
   const isThisWeek = isSameWeek(monday, new Date(), { weekStartsOn: 1 })
@@ -59,8 +63,55 @@ export default function Planner() {
 
   const lastCourse = blocks.at(-1)?.courseId ?? courses[0]?.id
 
+  /** Opens the block dialog on the invite's week, filled in from the .ics file, so it can be checked before saving. */
+  const importInvite = async (file: File) => {
+    const invite = readInvite(await file.text())
+    if (!invite) return setInviteError(t('inviteUnreadable', { file: file.name }))
+    setInviteError('')
+    const { start, end } = invite
+    const from = invite.allDay ? 9 * 60 : start.getHours() * 60 + start.getMinutes()
+    const to = invite.allDay ? from + 60 : isoDay(end) === isoDay(start) ? end.getHours() * 60 + end.getMinutes() : 24 * 60
+    const words = invite.title.toLowerCase().split(/[^\p{L}\p{N}]+/u)
+    const course = courses.find((c) => words.includes(c.short.toLowerCase()) || invite.title.toLowerCase().includes(c.name.toLowerCase()))
+    const day = dayIndex(start)
+    if (day >= 5 && !prefs.showWeekend) setPref('showWeekend', true)
+    setMonday(mondayOf(start))
+    setDraft({
+      courseId: course?.id ?? lastCourse,
+      day,
+      start: from,
+      end: to > from ? to : from + 60,
+      title: [invite.title, invite.location.split('\n')[0]].filter(Boolean).join(' · '),
+      repeat: invite.weekly ? 'weekly' : 'once',
+    })
+  }
+
+  const isFileDrag = (e: DragEvent) => e.dataTransfer.types.includes('Files')
+
   return (
-    <div className="px-4 pt-6 pb-16 sm:px-8">
+    <div
+      className="relative px-4 pt-6 pb-16 sm:px-8"
+      onDragOver={(e) => {
+        if (!isFileDrag(e)) return
+        e.preventDefault()
+        setDropping(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false)
+      }}
+      onDrop={(e) => {
+        if (!isFileDrag(e)) return
+        e.preventDefault()
+        setDropping(false)
+        const file = e.dataTransfer.files[0]
+        if (file) importInvite(file)
+      }}
+    >
+      {dropping && (
+        <div className="pointer-events-none absolute inset-2 z-30 flex items-center justify-center rounded-2xl border-2 border-dashed border-pen bg-pen-soft/80 text-lg font-semibold text-pen">
+          <CalendarPlus size={22} className="mr-2" /> {t('dropInvite')}
+        </div>
+      )}
       <header className="mb-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div>
           <div className="flex items-center gap-3">
@@ -119,9 +170,33 @@ export default function Planner() {
             <Toggle on={prefs.showWeekend} onClick={() => setPref('showWeekend', !prefs.showWeekend)}>
               {t('weekend')}
             </Toggle>
+            <button
+              onClick={() => inviteRef.current?.click()}
+              title={t('importInviteHint')}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rule-strong px-2.5 py-1 text-sm font-semibold text-ink-soft transition-colors hover:text-ink"
+            >
+              <CalendarPlus size={15} /> {t('importInvite')}
+            </button>
+            <input
+              ref={inviteRef}
+              type="file"
+              accept=".ics,text/calendar"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) importInvite(file)
+                e.target.value = ''
+              }}
+            />
           </div>
         </div>
       </header>
+
+      {inviteError && (
+        <p className="mb-3 text-sm font-semibold text-danger" role="alert">
+          {inviteError}
+        </p>
+      )}
 
       {isThisWeek && <UpNext courses={courses} />}
 

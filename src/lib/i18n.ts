@@ -216,6 +216,10 @@ const en = {
   addCatchUp: 'Add a catch-up to-do',
   catchUpTitle: 'Catch up: {dayShort} {date} {kind}',
   classSettings: 'Class settings',
+  importInvite: 'Import invite',
+  importInviteHint: 'Add an event from a calendar invitation (.ics file). You can also drop the file on this page.',
+  dropInvite: 'Drop the invite to add it',
+  inviteUnreadable: 'No event found in “{file}”. Pick the .ics file from the invitation.',
 
   // focus timer
   phaseFocus: 'Focus',
@@ -605,6 +609,10 @@ const tr: Record<Key, string> = {
   addCatchUp: 'Telafi görevi ekle',
   catchUpTitle: 'Telafi: {date} {dayLong} {kind}',
   classSettings: 'Ders ayarları',
+  importInvite: 'Davet içe aktar',
+  importInviteHint: 'Takvim davetindeki (.ics dosyası) etkinliği ekle. Dosyayı bu sayfaya sürükleyip de bırakabilirsin.',
+  dropInvite: 'Eklemek için daveti bırak',
+  inviteUnreadable: '“{file}” içinde etkinlik bulunamadı. Davetteki .ics dosyasını seç.',
 
   phaseFocus: 'Odak',
   phaseShort: 'Kısa mola',

@@ -12,6 +12,9 @@ import { Dialog, Label, Segmented, Tick } from './ui'
 
 export type BlockDraft = Omit<StudyBlock, 'id' | 'week'> & { id?: string; week?: string }
 
+/** The half-hour choices, plus `m` when it falls between them (an imported invite can start at 10:15). */
+const timesWith = (m: number) => (TIME_OPTIONS.includes(m) ? TIME_OPTIONS : [...TIME_OPTIONS, m].sort((a, b) => a - b))
+
 export function BlockDialog({ draft, week, onClose }: { draft: BlockDraft | null; week: string; onClose: () => void }) {
   const { t } = useT()
   return (
@@ -122,7 +125,7 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
               setForm((f) => ({ ...f, start, end: Math.max(f.end, start + 30) }))
             }}
           >
-            {TIME_OPTIONS.map((m) => (
+            {timesWith(form.start).map((m) => (
               <option key={m} value={m}>
                 {hm(m)}
               </option>
@@ -132,7 +135,9 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
         <div>
           <Label htmlFor="block-end">{t('to')}</Label>
           <select id="block-end" className="field" value={form.end} onChange={(e) => set('end', Number(e.target.value))}>
-            {TIME_OPTIONS.filter((m) => m > form.start).map((m) => (
+            {timesWith(form.end)
+              .filter((m) => m > form.start)
+              .map((m) => (
               <option key={m} value={m}>
                 {hm(m)}
               </option>
