@@ -20,6 +20,9 @@ const en = {
   themeSystem: 'Match system',
   theme: 'Theme',
   language: 'Language',
+  errorTitle: 'Something went wrong',
+  errorBody: 'Reload the page. Everything you entered is saved in this browser.',
+  reload: 'Reload',
 
   // backup
   backupIntro:
@@ -426,6 +429,9 @@ const tr: Record<Key, string> = {
   themeSystem: 'Sisteme uy',
   theme: 'Tema',
   language: 'Dil',
+  errorTitle: 'Bir şeyler ters gitti',
+  errorBody: 'Sayfayı yenile. Girdiğin her şey bu tarayıcıda kayıtlı.',
+  reload: 'Yenile',
 
   backupIntro:
     'Her şey bu tarayıcıda kayıtlı. Ara sıra yedek indir; tarayıcı verilerini silersen dönemin kaybolmasın.',
