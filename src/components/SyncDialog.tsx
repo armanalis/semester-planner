@@ -40,6 +40,7 @@ function useErrorText() {
       not_found: t('codeNotFound'),
       invalid_code: t('invalidCode'),
       storage_missing: t('storageMissing'),
+      rate_limited: t('rateLimited'),
     })[error] ?? (navigator.onLine ? t('syncError', { error }) : t('offline'))
 }
 

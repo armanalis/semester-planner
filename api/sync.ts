@@ -1,4 +1,5 @@
 import { randomInt } from 'node:crypto'
+import { rateLimit } from './_lib/limit.js'
 import { getRecord, json, putRecord, storageReady, type SyncRecord } from './_lib/store.js'
 
 // No 0/O/1/I so codes are easy to read off a screen and type on a phone.
@@ -31,6 +32,8 @@ export async function GET(request: Request) {
   if (!storageReady()) return json({ error: 'storage_missing' }, 503)
   const code = codeFrom(request)
   if (!code) return json({ error: 'invalid_code' }, 400)
+  const limited = await rateLimit(request, 'sync')
+  if (limited) return limited
   const record = await getRecord(code)
   return record ? json(record) : json({ error: 'not_found' }, 404)
 }
@@ -38,6 +41,8 @@ export async function GET(request: Request) {
 /** Create a new code holding this planner. */
 export async function POST(request: Request) {
   if (!storageReady()) return json({ error: 'storage_missing' }, 503)
+  const limited = await rateLimit(request, 'create')
+  if (limited) return limited
   const body = await readBody(request)
   if (body instanceof Response) return body
   for (let i = 0; i < 5; i++) {
@@ -54,6 +59,8 @@ export async function PUT(request: Request) {
   if (!storageReady()) return json({ error: 'storage_missing' }, 503)
   const code = codeFrom(request)
   if (!code) return json({ error: 'invalid_code' }, 400)
+  const limited = await rateLimit(request, 'sync')
+  if (limited) return limited
   const body = await readBody(request)
   if (body instanceof Response) return body
   const current = await getRecord(code)

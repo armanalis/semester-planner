@@ -105,11 +105,12 @@ async function push() {
       useSync.setState({ lastSyncedAt: dirtyAt, dirtyAt: stillSame ? 0 : useSync.getState().dirtyAt })
     }
     useSync.setState({ status: 'synced', error: '' })
+    // upload what changed during this upload; after a failure the 30s check (or coming back online) retries instead
+    if (useSync.getState().dirtyAt) schedulePush()
   } catch (e) {
     fail(e)
   } finally {
     pushing = false
-    if (useSync.getState().dirtyAt) schedulePush()
   }
 }
 

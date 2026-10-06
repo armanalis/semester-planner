@@ -349,6 +349,7 @@ const en = {
   codeNotFound: 'No planner found for this code.',
   invalidCode: 'That code doesn’t look right. It has 8 letters and numbers.',
   storageMissing: 'Sync storage isn’t set up on this server yet.',
+  rateLimited: 'Too many sync requests from this network. Try again in a few minutes; your planner is still saved on this device.',
   offline: 'You’re offline. Changes sync when you’re back online.',
   justNow: 'just now',
 
@@ -739,6 +740,7 @@ const tr: Record<Key, string> = {
   codeNotFound: 'Bu kodla bir planlayıcı bulunamadı.',
   invalidCode: 'Bu kod doğru görünmüyor. 8 harf ve rakamdan oluşur.',
   storageMissing: 'Bu sunucuda senkron depolama henüz kurulmadı.',
+  rateLimited: 'Bu ağdan çok fazla senkron isteği geldi. Birkaç dakika sonra tekrar dene; planlayıcın bu cihazda kayıtlı.',
   offline: 'Çevrimdışısın. Bağlantı gelince değişiklikler senkronlanır.',
   justNow: 'az önce',
 

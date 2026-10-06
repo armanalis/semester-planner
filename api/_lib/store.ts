@@ -11,6 +11,7 @@ export interface SyncRecord {
 const redisUrl = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL
 const redisToken = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN
 const useRedis = Boolean(redisUrl && redisToken)
+export const redisAuth = useRedis ? { url: redisUrl!, token: redisToken! } : null
 const localDir = path.join(process.cwd(), '.data', 'sync')
 
 /** On Vercel there's no writable disk, so sync needs Redis there. */
@@ -47,5 +48,8 @@ export async function putRecord(code: string, record: SyncRecord) {
   await writeFile(path.join(localDir, `${code}.json`), JSON.stringify(record))
 }
 
-export const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
+export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers },
+  })
