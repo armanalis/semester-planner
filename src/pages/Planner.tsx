@@ -77,7 +77,7 @@ export default function Planner() {
     if (day >= 5 && !prefs.showWeekend) setPref('showWeekend', true)
     setMonday(mondayOf(start))
     setDraft({
-      courseId: course?.id ?? lastCourse,
+      courseId: course?.id ?? '', // no course in the title: a meeting or appointment, so "Other"
       day,
       start: from,
       end: to > from ? to : from + 60,

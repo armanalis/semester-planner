@@ -408,13 +408,11 @@ export function WeekCalendar({
                       />
                     )
                   }
-                  const c = courseById[it.block.courseId]
-                  if (!c) return null
                   return (
                     <StudyBlockView
                       key={it.block.id}
                       block={it.block}
-                      course={c}
+                      course={courseById[it.block.courseId]}
                       done={isDone(it.block.id)}
                       dragging={moving?.id === it.block.id}
                       style={pos}
@@ -431,7 +429,7 @@ export function WeekCalendar({
                 {moving?.day === d && movingBlock && (
                   <div
                     style={{
-                      ...hueVars(courseById[movingBlock.courseId]?.hue ?? 'slate'),
+                      ...hueVars(courseById[movingBlock.courseId]?.hue),
                       top: (moving.start - DAY_START) * PX + 1,
                       height: (moving.end - moving.start) * PX - 2,
                     }}
@@ -523,7 +521,8 @@ function StudyBlockView({
   onTouchDrag,
 }: {
   block: StudyBlock
-  course: Course
+  /** undefined = "Other" (not for a course) */
+  course: Course | undefined
   done: boolean
   dragging: boolean
   style: CSSProperties
@@ -539,7 +538,7 @@ function StudyBlockView({
       data-done={done}
       onPointerDown={(e) => onDragStart(e, 'move')}
       onTouchStart={(e) => onTouchDrag(e, 'move')}
-      style={{ ...style, ...hueVars(course.hue) }}
+      style={{ ...style, ...hueVars(course?.hue) }}
       className={clsx(
         'study-block group absolute z-[1] flex cursor-grab gap-1.5 overflow-hidden px-1.5 active:cursor-grabbing',
         compact ? 'items-center' : 'items-start py-1',
@@ -564,7 +563,7 @@ function StudyBlockView({
         </span>
         {!compact && (
           <span className="block truncate text-2xs text-[var(--ink)]">
-            {course.short}, {range(block.start, block.end)}
+            {course?.short ?? t('other')}, {range(block.start, block.end)}
           </span>
         )}
       </button>

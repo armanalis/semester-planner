@@ -92,9 +92,9 @@ export default function Review() {
           ) : (
             <ul className="divide-y divide-rule">
               {unfinished.map((b) => (
-                <li key={b.id} className="py-2" style={courseById[b.courseId] ? hueVars(courseById[b.courseId].hue) : undefined}>
+                <li key={b.id} className="py-2" style={hueVars(courseById[b.courseId]?.hue)}>
                   <div className="flex items-center gap-3">
-                    <CourseChip course={courseById[b.courseId]} />
+                    <CourseChip course={courseById[b.courseId]} other />
                     <span className="min-w-0 flex-1 truncate font-semibold">{b.title}</span>
                     <span className="shrink-0 text-xs text-ink-soft">
                       {T.days[b.day]} {range(b.start, b.end)}
@@ -248,8 +248,14 @@ export default function Review() {
   )
 }
 
-function CourseChip({ course }: { course?: Course }) {
-  if (!course) return null
-  return <span className="shrink-0 rounded bg-[var(--hl)] px-1.5 py-0.5 text-xs font-bold text-[var(--ink)]">{course.short}</span>
+/** `other`: show "Other" when there's no course (study blocks can be meetings etc.). */
+function CourseChip({ course, other }: { course?: Course; other?: boolean }) {
+  const { t } = useT()
+  if (!course && !other) return null
+  return (
+    <span className="shrink-0 rounded bg-[var(--hl)] px-1.5 py-0.5 text-xs font-bold text-[var(--ink)]">
+      {course?.short ?? t('other')}
+    </span>
+  )
 }
 

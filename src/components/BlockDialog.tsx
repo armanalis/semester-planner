@@ -7,7 +7,7 @@ import { useFocus } from '../lib/focus'
 import { useT } from '../lib/i18n'
 import { TIME_OPTIONS, hm } from '../lib/time'
 import { usePlanner } from '../store'
-import type { StudyBlock } from '../types'
+import type { HueKey, StudyBlock } from '../types'
 import { Dialog, Label, Segmented, Tick } from './ui'
 
 export type BlockDraft = Omit<StudyBlock, 'id' | 'week'> & { id?: string; week?: string }
@@ -33,13 +33,18 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
   const [form, setForm] = useState(draft)
   const set = <K extends keyof BlockDraft>(k: K, v: BlockDraft[K]) => setForm((f) => ({ ...f, [k]: v }))
 
+  // "Other" (no course) is for meetings and anything else that isn't a course
+  const choices: { id: string; short: string; name: string; hue?: HueKey }[] = [
+    ...courses,
+    { id: '', short: t('other'), name: t('otherHint') },
+  ]
   const course = courses.find((c) => c.id === form.courseId)
   const suggestions = tasks.filter((x) => x.courseId === form.courseId && !x.done && x.title !== form.title).slice(0, 4)
   const isDone = !!(form.id && done[`${form.id}|${week}`])
 
   const save = (e: FormEvent) => {
     e.preventDefault()
-    const title = form.title.trim() || t('defaultTitle', { short: course?.short ?? '' }).trim()
+    const title = form.title.trim() || (course ? t('defaultTitle', { short: course.short }) : t('other'))
     const end = form.end > form.start ? form.end : form.start + 60
     const base = { courseId: form.courseId, day: form.day, start: form.start, end, title, repeat: form.repeat }
     if (form.id) {
@@ -54,7 +59,7 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
       <fieldset>
         <legend className="mb-1.5 text-sm font-semibold text-ink-soft">{t('course')}</legend>
         <div className="flex flex-wrap gap-1.5">
-          {courses.map((c) => (
+          {choices.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -73,7 +78,7 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
             </button>
           ))}
         </div>
-        {course && <p className="mt-1.5 text-sm text-ink-soft">{course.name}</p>}
+        <p className="mt-1.5 text-sm text-ink-soft">{course ? course.name : t('otherHint')}</p>
       </fieldset>
 
       <div>
@@ -82,7 +87,7 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
           id="block-title"
           data-autofocus
           className="field"
-          placeholder={t('titlePlaceholder', { short: course?.short ?? '' })}
+          placeholder={course ? t('titlePlaceholder', { short: course.short }) : t('otherPlaceholder')}
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
         />
@@ -166,7 +171,7 @@ function BlockForm({ draft, week, onClose }: { draft: BlockDraft; week: string; 
       </div>
 
       {form.id && (
-        <label className="flex items-center gap-2.5 text-sm font-semibold" style={course ? hueVars(course.hue) : undefined}>
+        <label className="flex items-center gap-2.5 text-sm font-semibold" style={hueVars(course?.hue)}>
           <Tick checked={isDone} onChange={() => toggleDone(form.id!, week)} label={t('doneThisWeek')} />
           {t('doneThisWeek')}
         </label>

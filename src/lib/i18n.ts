@@ -87,6 +87,9 @@ const en = {
   saveChanges: 'Save changes',
   addToWeek: 'Add to week',
   defaultTitle: 'Study {short}',
+  other: 'Other',
+  otherHint: 'Meetings, appointments and anything that isn’t a course.',
+  otherPlaceholder: 'Team meeting, dentist, …',
 
   // slot dialog
   type: 'Type',
@@ -493,6 +496,9 @@ const tr: Record<Key, string> = {
   saveChanges: 'Değişiklikleri kaydet',
   addToWeek: 'Haftaya ekle',
   defaultTitle: '{short} çalış',
+  other: 'Diğer',
+  otherHint: 'Toplantılar, randevular ve ders dışındaki her şey.',
+  otherPlaceholder: 'Ekip toplantısı, doktor randevusu, …',
 
   type: 'Tür',
   labHint: 'Bu lab birkaç grupta yapılıyorsa, kendi grubunu ders sayfasında seç.',

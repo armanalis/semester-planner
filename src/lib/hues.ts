@@ -15,10 +15,16 @@ export const HUES: Record<HueKey, { hl: [string, string]; ink: [string, string] 
   violet: { hl: ['#dcd3f7', '#3a2e66'], ink: ['#5b3fa8', '#cdbfff'] },
 }
 
+/** Blocks that aren't for a course ("Other": meetings, appointments…) get plain gray instead of a highlighter. */
+const OTHER: { hl: [string, string]; ink: [string, string] } = { hl: ['#e2e5ea', '#2a2f38'], ink: ['#586070', '#aeb5c2'] }
+
 const ld = ([light, dark]: [string, string]) => `light-dark(${light}, ${dark})`
 
-export const hueVars = (hue: HueKey): CSSProperties =>
-  ({ '--hl': ld(HUES[hue].hl), '--ink': ld(HUES[hue].ink) }) as CSSProperties
+/** Highlighter variables for a course's hue, or the "Other" gray when there's no course. */
+export const hueVars = (hue: HueKey | undefined): CSSProperties => {
+  const h = hue ? HUES[hue] : OTHER
+  return { '--hl': ld(h.hl), '--ink': ld(h.ink) } as CSSProperties
+}
 
 /** Swatch color for the color picker (always the light highlighter). */
 export const swatch = (hue: HueKey) => ld(HUES[hue].hl)
